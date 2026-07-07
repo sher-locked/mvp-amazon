@@ -7,3 +7,4 @@ dist/
 coverage/
 playwright-report/
 .cache/
+tmp/
