@@ -1,9 +1,9 @@
 import type { LlmMessage } from '../../client';
 import type { Listing } from '../../../domain/listing';
-import type { SourceOfTruth } from '../../../domain/research';
+import type { TagSet } from '../../../domain/research';
 
 /** Rubric prompt for the hero image. Phase 4 will pass the image to a vision model. */
-export function heroImagePrompt(listing: Listing, _sot: SourceOfTruth): LlmMessage[] {
+export function heroImagePrompt(listing: Listing, _tags: TagSet): LlmMessage[] {
   return [
     {
       role: 'system',

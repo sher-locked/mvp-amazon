@@ -1,9 +1,9 @@
 import type { LlmMessage } from '../../client';
 import type { Listing } from '../../../domain/listing';
-import type { SourceOfTruth } from '../../../domain/research';
+import type { TagSet } from '../../../domain/research';
 
 /** Rubric prompt for description + bullets. Refine in phase 4. */
-export function descriptionPrompt(listing: Listing, _sot: SourceOfTruth): LlmMessage[] {
+export function descriptionPrompt(listing: Listing, _tags: TagSet): LlmMessage[] {
   return [
     {
       role: 'system',

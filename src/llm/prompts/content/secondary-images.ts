@@ -1,9 +1,9 @@
 import type { LlmMessage } from '../../client';
 import type { Listing } from '../../../domain/listing';
-import type { SourceOfTruth } from '../../../domain/research';
+import type { TagSet } from '../../../domain/research';
 
 /** Rubric prompt for secondary/gallery images. Phase 4 adds vision input. */
-export function secondaryImagesPrompt(listing: Listing, _sot: SourceOfTruth): LlmMessage[] {
+export function secondaryImagesPrompt(listing: Listing, _tags: TagSet): LlmMessage[] {
   return [
     {
       role: 'system',

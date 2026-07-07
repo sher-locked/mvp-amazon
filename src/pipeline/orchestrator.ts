@@ -7,6 +7,7 @@ import { ingest } from './stages/ingest';
 import { scrape } from './stages/scrape';
 import { parse } from './stages/parse';
 import { research } from './stages/research';
+import { tag } from './stages/tag';
 import { evaluateContent } from './stages/evaluate-content';
 import { evaluateRufus } from './stages/evaluate-rufus';
 import { evaluateLlmSearch } from './stages/evaluate-llm-search';
@@ -61,22 +62,23 @@ export async function executeRun(runId: string, deps: OrchestratorDeps): Promise
     const ref = await runStage(run, repo, 'ingest', () => ingest(run.input));
     const scraped = await runStage(run, repo, 'scrape', () => scrape(ref, ctx));
     const listing = await runStage(run, repo, 'parse', () => parse(ref, scraped.page, ctx));
-    const sourceOfTruth = await runStage(run, repo, 'research', () => research(listing, ctx));
+    const skuResearch = await runStage(run, repo, 'research', () => research(listing, ctx));
+    const tags = await runStage(run, repo, 'tag', () => tag(listing, skuResearch, ctx));
     const content = await runStage(run, repo, 'evaluate-content', () =>
-      evaluateContent(listing, sourceOfTruth, ctx),
+      evaluateContent(listing, tags, ctx),
     );
     const rufus = await runStage(run, repo, 'evaluate-rufus', () =>
-      evaluateRufus(listing, sourceOfTruth, ctx),
+      evaluateRufus(listing, tags, ctx),
     );
     const llmSearch = await runStage(run, repo, 'evaluate-llm-search', () =>
-      evaluateLlmSearch(listing, sourceOfTruth, ctx),
+      evaluateLlmSearch(listing, tags, ctx),
     );
     const evaluation = { content, rufus, llmSearch };
     const recommendations = await runStage(run, repo, 'recommend', () =>
-      recommend({ listing, sourceOfTruth, evaluation }, ctx),
+      recommend({ listing, tags, evaluation }, ctx),
     );
 
-    run.result = { listing, sourceOfTruth, evaluation, recommendations };
+    run.result = { listing, research: skuResearch, tags, evaluation, recommendations };
     run.status = 'done';
   } catch (e) {
     run.status = 'failed';

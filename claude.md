@@ -10,8 +10,10 @@ One job: take an Amazon listing (URL/ASIN) and evaluate its content for **discov
 
 The unit of work is an **evaluation run** over one **listing**.
 
-- `Listing` — `{ ref, title, description, bullets, heroImage, secondaryImages[] }`
-- `SourceOfTruth` — hierarchical claims (brand → product → category) + target `keywords[]`
+- `Listing` — `{ ref, title, description, bullets, aplusContent, heroImage, secondaryImages[] }`
+- `Identity` — the SKU tuple `{brand} × {category} × {variantAttributes} × {size}`; `displayName` derived, never parsed
+- `Tag` — atomic claim on two axes: `type` (fact|functional|sensory|emotional|occasion|audience) × `scope` (brand|category|family|sku), stored once at its highest true scope (see `docs/sku-tags.md`)
+- `SkuResearch` — call-1 output `{ identity, notes, sources[] }`; `TagSet` — call-2 output `{ identity, tags[] }`, what downstream consumes
 - `Evaluation` — `{ content, rufus, llmSearch }`
 - `Recommendation` — prioritized, actionable content change
 - `Run` — `{ id, input, status, stages, result }`; status moves `queued → running → done | failed`
@@ -20,11 +22,11 @@ The unit of work is an **evaluation run** over one **listing**.
 
 The pipeline is a sequence of small steps in `pipeline/stages/`:
 
-`ingest → scrape → research → evaluate(content, rufus, llm-search) → recommend`
+`ingest → scrape → parse → research → tag → evaluate(content, rufus, llm-search) → recommend`
 
-Each step takes typed input, returns typed output, and never reaches into another step's internals. They are exposed two ways, both calling the same functions:
+Each step takes typed input, returns typed output, and never reaches into another step's internals. `research` (web-enabled LLM, expensive) and `tag` (strict structured output, cheap) mirror the scrape/parse split — the intermediate is persisted so re-bucketing is free. Steps are exposed two ways, both calling the same functions:
 
-- **Individually** — synchronous endpoints (`/scrape`, `/research`, `/evaluate/*`, `/recommend`) for de-risking and reuse.
+- **Individually** — synchronous endpoints (`/scrape`, `/parse`, `/research`, `/tags`, `/evaluate/*`, `/recommend`) for de-risking and reuse.
 - **Together** — the async pipeline via `pipeline/orchestrator.ts`, which owns sequencing and run status (`/runs`).
 
 ## Architecture Principles

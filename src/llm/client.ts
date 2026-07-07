@@ -11,10 +11,14 @@ export interface LlmRequest {
   temperature?: number;
   /** allow the provider to use web search where supported */
   web?: boolean;
+  /** strict structured output: provider enforces this JSON schema on the reply */
+  schema?: { name: string; schema: Record<string, unknown> };
 }
 
 export interface LlmResponse {
   text: string;
+  /** URLs consulted when web search was enabled, where the provider reports them */
+  sources?: string[];
   raw?: unknown;
 }
 

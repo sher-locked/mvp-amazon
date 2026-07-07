@@ -16,6 +16,7 @@ const schema = z.object({
 
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-5.5'),
   PERPLEXITY_API_KEY: z.string().optional(),
 });
 

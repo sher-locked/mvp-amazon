@@ -8,6 +8,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { registerScrapeRoutes } from './routes/scrape';
 import { registerParseRoutes } from './routes/parse';
 import { registerResearchRoutes } from './routes/research';
+import { registerTagsRoutes } from './routes/tags';
 import { registerEvaluateRoutes } from './routes/evaluate';
 import { registerRecommendRoutes } from './routes/recommend';
 
@@ -37,6 +38,7 @@ export function buildApp(c: Container): FastifyInstance {
   registerScrapeRoutes(app, c);
   registerParseRoutes(app, c);
   registerResearchRoutes(app, c);
+  registerTagsRoutes(app, c);
   registerEvaluateRoutes(app, c);
   registerRecommendRoutes(app, c);
 

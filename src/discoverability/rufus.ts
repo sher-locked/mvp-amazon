@@ -1,5 +1,5 @@
 import type { Listing } from '../domain/listing';
-import type { SourceOfTruth } from '../domain/research';
+import type { TagSet } from '../domain/research';
 import type { DiscoverabilityResult } from '../domain/evaluation';
 import type { PipelineContext } from '../pipeline/context';
 
@@ -10,7 +10,7 @@ import type { PipelineContext } from '../pipeline/context';
  */
 export async function probeRufus(
   _listing: Listing,
-  _sot: SourceOfTruth,
+  _tags: TagSet,
   _ctx: PipelineContext,
 ): Promise<DiscoverabilityResult> {
   return {

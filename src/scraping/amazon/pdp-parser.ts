@@ -95,6 +95,33 @@ function extractBullets($: CheerioAPI): string[] {
 }
 
 /**
+ * A+ modules are marketing-designed HTML; pull the readable text (headings,
+ * paragraphs, list items, image alt copy) as flat evidence. Amazon renders
+ * duplicate `#aplus` ids — one per module block ("From the brand", "From the
+ * manufacturer") — so walk them all. Best-effort; degrades to ''.
+ */
+function extractAplus($: CheerioAPI): string {
+  const roots = $('#aplus');
+  if (!roots.length) return '';
+  roots.find('script, style, noscript').remove();
+
+  const parts = roots
+    .find('h1, h2, h3, h4, h5, p, li')
+    .map((_, el) => clean($(el).text()))
+    .get()
+    .filter(Boolean);
+
+  // image-only A+ modules carry their copy in alt text
+  const alts = roots
+    .find('img[alt]')
+    .map((_, el) => clean($(el).attr('alt') ?? ''))
+    .get()
+    .filter((alt) => alt.length > 3);
+
+  return [...new Set([...parts, ...alts])].join('\n');
+}
+
+/**
  * Turn a scraped Amazon PDP into a structured Listing. Amazon markup varies
  * by category/marketplace, so missing pieces degrade to empty values rather
  * than throwing.
@@ -106,6 +133,7 @@ export function parsePdp(ref: ListingRef, page: ScrapedPage): Listing {
   const bullets = extractBullets($);
 
   const description = clean($('#productDescription').first().text());
+  const aplusContent = extractAplus($);
 
   const imageBlock = extractImageBlock(page.html);
   const blockImages: ListingImage[] = imageBlock
@@ -116,5 +144,5 @@ export function parsePdp(ref: ListingRef, page: ScrapedPage): Listing {
   const heroImage = blockImages[0] ?? heroFromDom($);
   const secondaryImages = blockImages.slice(1);
 
-  return { ref, title, description, bullets, heroImage, secondaryImages };
+  return { ref, title, description, bullets, aplusContent, heroImage, secondaryImages };
 }

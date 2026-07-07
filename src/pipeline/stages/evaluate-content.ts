@@ -1,5 +1,5 @@
 import type { Listing } from '../../domain/listing';
-import type { SourceOfTruth } from '../../domain/research';
+import type { TagSet } from '../../domain/research';
 import type { AssetEvaluation, ContentEvaluation } from '../../domain/evaluation';
 import type { PipelineContext } from '../context';
 
@@ -15,7 +15,7 @@ const mockAsset = (asset: AssetEvaluation['asset']): AssetEvaluation => ({
  */
 export async function evaluateContent(
   _listing: Listing,
-  _sot: SourceOfTruth,
+  _tags: TagSet,
   _ctx: PipelineContext,
 ): Promise<ContentEvaluation> {
   const assets = [

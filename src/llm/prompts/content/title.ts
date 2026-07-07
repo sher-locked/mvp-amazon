@@ -1,9 +1,9 @@
 import type { LlmMessage } from '../../client';
 import type { Listing } from '../../../domain/listing';
-import type { SourceOfTruth } from '../../../domain/research';
+import type { TagSet } from '../../../domain/research';
 
 /** Rubric prompt for evaluating the listing title. Refine in phase 4. */
-export function titlePrompt(listing: Listing, _sot: SourceOfTruth): LlmMessage[] {
+export function titlePrompt(listing: Listing, _tags: TagSet): LlmMessage[] {
   return [
     {
       role: 'system',

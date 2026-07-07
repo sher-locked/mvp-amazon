@@ -1,17 +1,17 @@
 import type { Listing } from '../../domain/listing';
-import type { SourceOfTruth } from '../../domain/research';
+import type { TagSet } from '../../domain/research';
 import type { Evaluation, Recommendation } from '../../domain/evaluation';
 import type { PipelineContext } from '../context';
 
 export interface RecommendInput {
   listing: Listing;
-  sourceOfTruth: SourceOfTruth;
+  tags: TagSet;
   evaluation: Evaluation;
 }
 
 /**
  * Synthesize prioritized content changes from the three evaluation axes.
- * Phase 0: mock. Phase 4: LLM synthesis over findings + source-of-truth.
+ * Phase 0: mock. Phase 4: LLM synthesis over findings + tag set.
  */
 export async function recommend(
   _input: RecommendInput,

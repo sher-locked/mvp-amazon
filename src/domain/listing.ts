@@ -16,6 +16,8 @@ export interface Listing {
   title: string;
   description: string;
   bullets: string[];
+  /** Raw A+ module text; best-effort, empty when the PDP has none. */
+  aplusContent: string;
   heroImage: ListingImage | null;
   secondaryImages: ListingImage[];
 }

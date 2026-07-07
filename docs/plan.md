@@ -48,14 +48,18 @@ Check visibility in ChatGPT / Claude / Perplexity, ideally via headless web.
 
 Notes: _record findings._
 
-## Phase 4 — Research + Evaluation + Recommendations ⬜
+## Phase 4 — Research + Evaluation + Recommendations 🔶
 
 Turn mock evaluation into real scoring.
 
-- ⬜ `research/` — web search + LLM synthesis → hierarchical `SourceOfTruth` + keywords.
-- ⬜ Real LLM clients in `llm/providers/*`.
+- ✅ Research landed early (M2): `research` stage = web-enabled OpenAI call resolving the identity tuple + notes; `tag` stage = strict-structured-output bucketing into the flat scope×type `TagSet` (replaces the old `SourceOfTruth` model — see `docs/sku-tags.md`). Exposed as stateless `POST /research` + `POST /tags` with versioned `tmp/research`, `tmp/tags` artifacts; `/tags` reuses stored research unless `refresh`.
+- ✅ Real OpenAI client (`llm/providers/openai.ts`, Responses API: web_search tool + json_schema strict output + source URLs). Anthropic/Perplexity still stubs.
+- ✅ A+ content (`#aplus`) extracted into `Listing.aplusContent` as research evidence.
+- ✅ `GET /tags?input=...` — pure read of the latest stored tag set (no LLM), `&include=matrix` for the markdown view.
 - ⬜ Content rubrics in `llm/prompts/content/*` (title, description, hero, secondary; vision for images).
 - ⬜ `recommend` synthesis over the three axes.
+
+Notes: Live-verified with `gpt-5.5` on the IN adidas shoe (`B07M8H2HR4`: 66 tags) and `B0B8PDHRWY` — which on amazon.in is a Kodak PIXPRO FZ45 camera, not the Dettol wipes from `sku-tags.md` (the doc's example ASIN is fictional/stale; 82 tags). Identity tuples sane (incl. `parentBrand: Kodak` for PIXPRO), zero cross-scope repeats, `/tags` reuse of stored research confirmed. Each web-enabled research call runs ~50–75s — factor into sync-endpoint timeouts when this joins `/runs`. `sources[]` is broad provenance (everything consulted), not citations.
 
 ## Phase 5 — Persistence, Auth, Billing ⬜
 

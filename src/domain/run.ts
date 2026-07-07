@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { now } from '../lib/result';
 import type { Listing } from './listing';
-import type { SourceOfTruth } from './research';
+import type { SkuResearch, TagSet } from './research';
 import type { Evaluation, Recommendation } from './evaluation';
 
 export type RunStatus = 'queued' | 'running' | 'done' | 'failed';
@@ -11,6 +11,7 @@ export const STAGE_NAMES = [
   'scrape',
   'parse',
   'research',
+  'tag',
   'evaluate-content',
   'evaluate-rufus',
   'evaluate-llm-search',
@@ -30,7 +31,8 @@ export interface StageState {
 
 export interface RunResult {
   listing: Listing;
-  sourceOfTruth: SourceOfTruth;
+  research: SkuResearch;
+  tags: TagSet;
   evaluation: Evaluation;
   recommendations: Recommendation[];
 }

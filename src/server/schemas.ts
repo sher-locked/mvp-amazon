@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Listing } from '../domain/listing';
-import type { SourceOfTruth } from '../domain/research';
+import type { Identity, Tag, TagSet } from '../domain/research';
 import type { Evaluation } from '../domain/evaluation';
 
 const marketplace = z.enum(['US', 'UK', 'DE', 'FR', 'ES', 'IT', 'IN', 'JP', 'CA', 'AU']);
@@ -12,21 +12,34 @@ export const listingSchema = z.object({
   title: z.string(),
   description: z.string(),
   bullets: z.array(z.string()),
+  // default keeps parse artifacts stored before aplusContent existed loadable
+  aplusContent: z.string().default(''),
   heroImage: image.nullable(),
   secondaryImages: z.array(image),
-}) satisfies z.ZodType<Listing>;
+}) satisfies z.ZodType<Listing, z.ZodTypeDef, unknown>;
 
-export const sourceOfTruthSchema = z.object({
-  claims: z.array(
-    z.object({
-      scope: z.enum(['brand', 'product', 'category']),
-      text: z.string(),
-      source: z.string().optional(),
-      confidence: z.number().optional(),
-    }),
-  ),
-  keywords: z.array(z.string()),
-}) satisfies z.ZodType<SourceOfTruth>;
+export const identitySchema = z.object({
+  brand: z.object({ name: z.string(), parentBrand: z.string().nullable() }),
+  category: z.string(),
+  family: z.object({ name: z.string(), variantAttributes: z.record(z.string()) }),
+  sku: z.record(z.string()),
+  displayName: z.string(),
+}) satisfies z.ZodType<Identity>;
+
+export const tagSchema = z.object({
+  value: z.string(),
+  type: z.enum(['fact', 'functional', 'sensory', 'emotional', 'occasion', 'audience']),
+  scope: z.enum(['brand', 'category', 'family', 'sku']),
+  complianceSensitive: z.boolean(),
+  source: z.enum(['observed', 'inferred']),
+  evidence: z.string(),
+  confidence: z.number().min(0).max(1),
+}) satisfies z.ZodType<Tag>;
+
+export const tagSetSchema = z.object({
+  identity: identitySchema,
+  tags: z.array(tagSchema),
+}) satisfies z.ZodType<TagSet>;
 
 const score = z.object({ value: z.number(), max: z.number(), notes: z.string().optional() });
 
@@ -68,6 +81,21 @@ export const parseBody = z.object({
   scraper: scraperKind.optional(),
   refetch: z.boolean().optional(),
 });
-export const researchBody = z.object({ listing: listingSchema });
-export const evaluateBody = z.object({ listing: listingSchema, sourceOfTruth: sourceOfTruthSchema });
+export const researchBody = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+});
+
+export const tagsBody = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+  refresh: z.boolean().optional(),
+});
+
+export const tagsQuery = z.object({ include: z.enum(['matrix']).optional() });
+
+export const getTagsQuery = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+  include: z.enum(['matrix']).optional(),
+});
+
+export const evaluateBody = z.object({ listing: listingSchema, tags: tagSetSchema });
 export const recommendBody = evaluateBody.extend({ evaluation: evaluationSchema });
