@@ -53,7 +53,21 @@ export const evaluationSchema = z.object({
   llmSearch: discoverability,
 }) satisfies z.ZodType<Evaluation>;
 
-export const scrapeBody = z.object({ input: z.string().min(1, 'input (url or ASIN) is required') });
+export const scraperKind = z.enum(['playwright', 'brightdata-unlocker', 'brightdata-browser']);
+
+export const scrapeBody = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+  scraper: scraperKind.optional(),
+  country: z.string().length(2).optional(),
+});
+
+export const scrapeQuery = z.object({ include: z.enum(['html']).optional() });
+
+export const parseBody = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+  scraper: scraperKind.optional(),
+  refetch: z.boolean().optional(),
+});
 export const researchBody = z.object({ listing: listingSchema });
 export const evaluateBody = z.object({ listing: listingSchema, sourceOfTruth: sourceOfTruthSchema });
 export const recommendBody = evaluateBody.extend({ evaluation: evaluationSchema });

@@ -1,12 +1,44 @@
-import type { Listing, ListingRef } from '../../domain/listing';
-import { parsePdp } from '../../scraping/amazon/pdp-parser';
+import type { ListingRef } from '../../domain/listing';
+import type { ScrapedPage } from '../../scraping/scraper';
+import { countryForMarketplace } from '../../scraping/amazon/country';
+import { isBlocked } from '../../scraping/amazon/block-detect';
+import type { RawArtifactMeta } from '../../persistence/artifacts/artifact-store';
 import type { PipelineContext } from '../context';
 
-/**
- * Fetch + parse the Amazon PDP into a Listing.
- * Phase 0: skip the network and return a mock via parsePdp.
- * Phase 1: `const page = await ctx.scraper.fetch(ref.url); return parsePdp(ref, page);`
- */
-export async function scrape(ref: ListingRef, _ctx: PipelineContext): Promise<Listing> {
-  return parsePdp(ref);
+export interface ScrapeResult {
+  page: ScrapedPage;
+  meta: RawArtifactMeta;
+}
+
+export interface ScrapeStageOptions {
+  /** override the marketplace-derived egress country */
+  country?: string;
+}
+
+/** Fetch the raw PDP HTML via the context's scraper and persist it. */
+export async function scrape(
+  ref: ListingRef,
+  ctx: PipelineContext,
+  opts: ScrapeStageOptions = {},
+): Promise<ScrapeResult> {
+  const country = opts.country ?? countryForMarketplace(ref.marketplace);
+  const page = await ctx.scraper.fetch(ref.url, { country });
+  const block = isBlocked(page.html);
+
+  const meta: RawArtifactMeta = {
+    scraper: ctx.scraper.kind,
+    status: page.status,
+    country,
+    url: page.url,
+    fetchedAt: new Date().toISOString(),
+    blocked: block.blocked,
+    ...(block.marker ? { blockMarker: block.marker } : {}),
+  };
+
+  await ctx.artifacts.saveRaw(ref, page.html, meta);
+  ctx.logger.info(
+    { asin: ref.asin, marketplace: ref.marketplace, scraper: meta.scraper, blocked: meta.blocked },
+    'scraped pdp',
+  );
+  return { page, meta };
 }

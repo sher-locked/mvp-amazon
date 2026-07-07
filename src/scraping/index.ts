@@ -16,3 +16,18 @@ export function createScraper(kind: ScraperKind, config: Config): Scraper {
       return new BrightDataBrowserScraper(config);
   }
 }
+
+export type ScraperResolver = (kind?: ScraperKind) => Scraper;
+
+/** Lazily builds and memoizes one scraper per kind; default from config. */
+export function createScraperResolver(config: Config): ScraperResolver {
+  const cache = new Map<ScraperKind, Scraper>();
+  return (kind = config.DEFAULT_SCRAPER) => {
+    let scraper = cache.get(kind);
+    if (!scraper) {
+      scraper = createScraper(kind, config);
+      cache.set(kind, scraper);
+    }
+    return scraper;
+  };
+}

@@ -27,13 +27,13 @@ Both paths call the same stage functions — no duplicated logic.
 | `config/`          | Typed env/config; sole reader of `process.env`.                       |
 | `lib/`             | Logger, typed errors, small shared utils (`Result`, `now`).           |
 | `domain/`          | Core types + contracts: `Listing`, `SourceOfTruth`, `Evaluation`, `Run`. No impl. |
-| `pipeline/stages/` | The composable steps: `ingest`, `scrape`, `research`, `evaluate-*`, `recommend`. |
+| `pipeline/stages/` | The composable steps: `ingest`, `scrape`, `parse`, `research`, `evaluate-*`, `recommend`. |
 | `pipeline/`        | `orchestrator` (sequences stages, owns run status) + `context` (provider handles). |
-| `scraping/`        | `Scraper` contract + factory; `playwright/`, `brightdata/`, `amazon/` (PDP parser). |
+| `scraping/`        | `Scraper` contract + factory + per-request resolver; `playwright/`, `brightdata/`, `amazon/` (PDP parser, block-detect, country map). |
 | `research/`        | Web search + LLM synthesis → `SourceOfTruth`.                         |
 | `llm/`             | Provider-agnostic `LlmClient` + factory + `providers/` + `prompts/` (rubrics). |
 | `discoverability/` | Rufus + LLM-search probes.                                            |
-| `persistence/`     | `RunRepository` contract + in-memory impl (DB later).                 |
+| `persistence/`     | `RunRepository` contract + in-memory impl (DB later); `artifacts/` — versioned `ArtifactStore` (fs impl under `tmp/`). |
 | `jobs/`            | In-process job queue (durable queue later).                          |
 | `auth/`            | Company-email OTP (stub).                                             |
 | `billing/`         | Quota / unlock paywall (stub).                                        |
@@ -43,12 +43,13 @@ Both paths call the same stage functions — no duplicated logic.
 
 ## Stages (the composable unit)
 
-`ingest → scrape → research → evaluate(content, rufus, llm-search) → recommend`
+`ingest → scrape → parse → research → evaluate(content, rufus, llm-search) → recommend`
 
 | Stage              | In → Out                                  | Status         |
 | ------------------ | ----------------------------------------- | -------------- |
 | `ingest`           | url/asin → `ListingRef`                    | real           |
-| `scrape`           | `ListingRef` → `Listing`                   | mock (phase 1) |
+| `scrape`           | `ListingRef` → raw PDP HTML (persisted)    | real           |
+| `parse`            | raw HTML → `Listing` (persisted)           | real           |
 | `research`         | `Listing` → `SourceOfTruth`                | mock (phase 4) |
 | `evaluate-content` | `Listing`+`SourceOfTruth` → `ContentEvaluation` | mock (phase 4) |
 | `evaluate-rufus`   | `Listing`+`SourceOfTruth` → `DiscoverabilityResult` | mock (phase 2) |
@@ -61,13 +62,14 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 
 | Method | Path                    | In → Out                                              |
 | ------ | ----------------------- | ---------------------------------------------------- |
-| POST   | `/scrape`               | `{ input }` → `{ listing }`                           |
+| POST   | `/scrape`               | `{ input, scraper?, country? }` → `{ ref, meta, blocked }` (`?include=html` adds the raw body) |
+| POST   | `/parse`                | `{ input, scraper?, refetch? }` → `{ listing, source }` (reuses latest stored HTML unless `refetch`) |
 | POST   | `/research`             | `{ listing }` → `{ sourceOfTruth }`                   |
 | POST   | `/evaluate/content`     | `{ listing, sourceOfTruth }` → `{ content }`          |
 | POST   | `/evaluate/rufus`       | `{ listing, sourceOfTruth }` → `{ rufus }`            |
 | POST   | `/evaluate/llm-search`  | `{ listing, sourceOfTruth }` → `{ llmSearch }`        |
 | POST   | `/recommend`            | `{ listing, sourceOfTruth, evaluation }` → `{ recommendations }` |
-| POST   | `/runs`                 | `{ input }` → `{ runId, status }` (async pipeline)   |
+| POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
 | GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
 | POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
 | POST   | `/auth/verify`          | `{ email, code }` → `{ user }` (stub)                 |
@@ -76,6 +78,15 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 ## Data model (current, in-memory)
 
 `Run` holds `input`, `status` (`queued|running|done|failed`), per-stage `StageState[]`, and a `RunResult` (`listing`, `sourceOfTruth`, `evaluation`, `recommendations`). See `domain/`.
+
+## Artifact persistence (filesystem, versioned)
+
+`ArtifactStore` (see `persistence/artifacts/`) keeps every scrape/parse, newest pointed to by `latest.json`:
+
+- `tmp/scrape/<MARKET>_<ASIN>/<ISOts>__<scraper>.html` + `latest.json` with provenance `{ scraper, status, country, url, fetchedAt, blocked, file }`.
+- `tmp/parse/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer.
+
+`/parse` loads the latest raw HTML instead of re-scraping (BrightData requests cost money); `refetch: true` forces a fresh scrape.
 
 ## DB tables (placeholder — not yet implemented)
 

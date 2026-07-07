@@ -11,21 +11,11 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ingest } from '../src/pipeline/stages/ingest';
 import { PlaywrightScraper } from '../src/scraping/playwright';
+import { isBlocked } from '../src/scraping/amazon/block-detect';
 
 const DEFAULTS = [
   'https://www.amazon.com/dp/B0CG9CW14Q/',
   'https://www.amazon.in/dp/B07M8H2HR4/',
-];
-
-const BLOCK_MARKERS = [
-  'Type the characters you see in this image',
-  'Enter the characters you see below',
-  "make sure you're not a robot",
-  'To discuss automated access to Amazon data',
-  'Click the button below to continue shopping',
-  'api-services-support@amazon.com',
-  'Robot Check',
-  'captcha',
 ];
 
 const CONTENT_MARKERS = ['id="productTitle"', 'feature-bullets', 'landingImage'];
@@ -42,7 +32,7 @@ async function probe(scraper: PlaywrightScraper, input: string, outDir: string):
     const page = await scraper.fetch(ref.url);
     const elapsedMs = Date.now() - startedAt;
 
-    const blockedBy = pick(page.html, BLOCK_MARKERS);
+    const block = isBlocked(page.html);
     const contentHits = pick(page.html, CONTENT_MARKERS);
     const pageTitle = extract(page.html, /<title[^>]*>([^<]*)<\/title>/i);
     const productTitle = extract(page.html, /id="productTitle"[^>]*>([^<]+)</i);
@@ -55,7 +45,7 @@ async function probe(scraper: PlaywrightScraper, input: string, outDir: string):
     console.log(`  elapsed       : ${elapsedMs} ms`);
     console.log(`  html length   : ${page.html.length}`);
     console.log(`  <title>       : ${pageTitle ?? '(none)'}`);
-    console.log(`  blocked?      : ${blockedBy.length ? `YES → ${blockedBy.join(', ')}` : 'no'}`);
+    console.log(`  blocked?      : ${block.blocked ? `YES → ${block.marker}` : 'no'}`);
     console.log(`  content found : ${contentHits.length ? contentHits.join(', ') : '(none)'}`);
     console.log(`  #productTitle : ${productTitle ?? '(not found)'}`);
     console.log(`  saved html    : ${file}`);

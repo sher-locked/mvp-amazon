@@ -9,6 +9,7 @@ export type RunStatus = 'queued' | 'running' | 'done' | 'failed';
 export const STAGE_NAMES = [
   'ingest',
   'scrape',
+  'parse',
   'research',
   'evaluate-content',
   'evaluate-rufus',

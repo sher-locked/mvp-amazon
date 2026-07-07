@@ -5,6 +5,7 @@ import type { RunRepository } from '../persistence/run-repository';
 import type { PipelineContext } from './context';
 import { ingest } from './stages/ingest';
 import { scrape } from './stages/scrape';
+import { parse } from './stages/parse';
 import { research } from './stages/research';
 import { evaluateContent } from './stages/evaluate-content';
 import { evaluateRufus } from './stages/evaluate-rufus';
@@ -58,7 +59,8 @@ export async function executeRun(runId: string, deps: OrchestratorDeps): Promise
 
   try {
     const ref = await runStage(run, repo, 'ingest', () => ingest(run.input));
-    const listing = await runStage(run, repo, 'scrape', () => scrape(ref, ctx));
+    const scraped = await runStage(run, repo, 'scrape', () => scrape(ref, ctx));
+    const listing = await runStage(run, repo, 'parse', () => parse(ref, scraped.page, ctx));
     const sourceOfTruth = await runStage(run, repo, 'research', () => research(listing, ctx));
     const content = await runStage(run, repo, 'evaluate-content', () =>
       evaluateContent(listing, sourceOfTruth, ctx),

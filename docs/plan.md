@@ -17,16 +17,17 @@ Boilerplate, contracts, composable stages, async pipeline — runs end-to-end wi
 
 Notes: `ingest` is the only fully-real stage; everything else returns mocks.
 
-## Phase 1 — De-risk #1: Scrape Amazon PDP ⬜
+## Phase 1 — De-risk #1: Scrape Amazon PDP ✅
 
 Get the 4 parts (title, description, hero, secondary images) from a real PDP.
 
-- ⬜ Spike local Playwright on a real PDP; assess Amazon bot-blocking.
-- ⬜ Implement `brightdata/unlocker.ts` (Web Unlocker) as the PDP fetch path.
-- ⬜ Real `amazon/pdp-parser.ts` (HTML → `Listing`); handle marketplace variants.
-- ⬜ Wire `scrape` stage to fetch + parse; `/scrape` returns a real listing.
+- ✅ Spike local Playwright on a real PDP; assess Amazon bot-blocking.
+- ✅ Implement `brightdata/unlocker.ts` (Web Unlocker) as the default PDP fetch path (`api.brightdata.com/request`, egress country mapped from marketplace).
+- ✅ Real `amazon/pdp-parser.ts` (cheerio; HTML → `Listing`); handles marketplace variants.
+- ✅ Split `scrape` (raw HTML) and `parse` (Listing) stages; `/scrape` + `/parse` endpoints with per-request `scraper` selection.
+- ✅ Versioned filesystem `ArtifactStore` (`tmp/scrape`, `tmp/parse`); `/parse` reuses stored HTML unless `refetch`.
 
-Notes: _record what worked / what got blocked here._
+Notes: Local Playwright worked on both test URLs (US chair, IN shoe) without residential proxies — kept as selectable backup. Unlocker verified live on both marketplaces (`country` honored, no blocks). Parser quirks: fashion/softlines PDPs (amazon.in shoe) have no `#feature-bullets`; bullets live under "About this item" in `#productFactsDesktopExpander`. Images come from the `'colorImages': { 'initial': [...] }` ImageBlockATF script (alt-image thumbs are tiny variants). Some PDPs (US chair) have no `#productDescription` at all — description only exists as A+ content (`#aplus`), deferred.
 
 ## Phase 2 — De-risk #2: Probe Rufus ⬜
 

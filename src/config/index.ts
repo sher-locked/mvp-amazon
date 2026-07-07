@@ -22,5 +22,12 @@ const schema = z.object({
 export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  if (env === process.env) {
+    try {
+      process.loadEnvFile();
+    } catch {
+      // no .env file; rely on the ambient environment
+    }
+  }
   return schema.parse(env);
 }

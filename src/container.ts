@@ -1,9 +1,11 @@
+import { join } from 'node:path';
 import type { Config } from './config';
 import { createLogger, type Logger } from './lib/logger';
-import { createScraper } from './scraping';
+import { createScraperResolver, type ScraperResolver } from './scraping';
 import { createLlmClient } from './llm';
 import { InMemoryRunRepository } from './persistence/memory/run-repository';
 import type { RunRepository } from './persistence/run-repository';
+import { FsArtifactStore } from './persistence/artifacts/fs/artifact-store';
 import { JobQueue } from './jobs/queue';
 import { StubAuthService, type AuthService } from './auth/service';
 import { StubBillingService, type BillingService } from './billing/service';
@@ -17,6 +19,8 @@ export interface Container {
   queue: JobQueue;
   auth: AuthService;
   billing: BillingService;
+  /** Resolve a scraper per request; defaults to config.DEFAULT_SCRAPER. */
+  getScraper: ScraperResolver;
   ctx: PipelineContext;
 }
 
@@ -24,8 +28,9 @@ export function buildContainer(config: Config): Container {
   const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV !== 'production');
   const repo = new InMemoryRunRepository();
   const queue = new JobQueue(logger);
-  const scraper = createScraper(config.DEFAULT_SCRAPER, config);
+  const getScraper = createScraperResolver(config);
   const llm = createLlmClient(config.DEFAULT_LLM, config);
+  const artifacts = new FsArtifactStore(join(process.cwd(), 'tmp'));
 
   return {
     config,
@@ -34,6 +39,7 @@ export function buildContainer(config: Config): Container {
     queue,
     auth: new StubAuthService(),
     billing: new StubBillingService(),
-    ctx: { scraper, llm, logger },
+    getScraper,
+    ctx: { scraper: getScraper(), llm, logger, artifacts },
   };
 }

@@ -4,6 +4,8 @@ export interface ScrapeOptions {
   /** wait for full client-side render (browser-based scrapers only) */
   render?: boolean;
   timeoutMs?: number;
+  /** ISO country for proxy egress (proxy-based scrapers only) */
+  country?: string;
 }
 
 export interface ScrapedPage {
