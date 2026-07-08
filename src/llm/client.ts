@@ -8,6 +8,8 @@ export interface LlmMessage {
 export interface LlmRequest {
   messages: LlmMessage[];
   model?: string;
+  /** resolved by the provider to a cheaper/faster model when configured */
+  tier?: 'fast';
   temperature?: number;
   /** allow the provider to use web search where supported */
   web?: boolean;

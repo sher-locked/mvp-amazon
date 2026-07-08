@@ -39,8 +39,12 @@ export class OpenAiClient implements LlmClient {
       throw new AppError('OPENAI_API_KEY is not set; add it to .env', 500, 'CONFIG');
     }
 
+    const fallback =
+      req.tier === 'fast'
+        ? (this.config.OPENAI_MODEL_FAST ?? this.config.OPENAI_MODEL)
+        : this.config.OPENAI_MODEL;
     const body: Record<string, unknown> = {
-      model: req.model ?? this.config.OPENAI_MODEL,
+      model: req.model ?? fallback,
       input: toInput(req.messages),
     };
     if (req.temperature !== undefined) body.temperature = req.temperature;

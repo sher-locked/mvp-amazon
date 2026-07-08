@@ -27,7 +27,7 @@ Both paths call the same stage functions — no duplicated logic.
 | `config/`          | Typed env/config; sole reader of `process.env`.                       |
 | `lib/`             | Logger, typed errors, small shared utils (`Result`, `now`).           |
 | `domain/`          | Core types + contracts: `Listing`, `Identity`/`Tag`/`TagSet`, `Evaluation`, `Run`. No impl. |
-| `pipeline/stages/` | The composable steps: `ingest`, `scrape`, `parse`, `research`, `tag`, `evaluate-*`, `recommend`. |
+| `pipeline/stages/` | The composable steps: `ingest`, `scrape`, `parse`, `research`, `tag`, `evaluate-*`, `generate`. |
 | `pipeline/`        | `orchestrator` (sequences stages, owns run status) + `context` (provider handles). |
 | `scraping/`        | `Scraper` contract + factory + per-request resolver; `playwright/`, `brightdata/`, `amazon/` (PDP parser, block-detect, country map). |
 | `research/`        | Pure views over research output (`tag-matrix`); the research/tag LLM calls live in `pipeline/stages/` + `llm/prompts/research/`. |
@@ -43,7 +43,7 @@ Both paths call the same stage functions — no duplicated logic.
 
 ## Stages (the composable unit)
 
-`ingest → scrape → parse → research → tag → evaluate(content, rufus, llm-search) → recommend`
+`ingest → scrape → parse → research → tag → evaluate(content, rufus, llm-search) → generate`
 
 | Stage              | In → Out                                  | Status         |
 | ------------------ | ----------------------------------------- | -------------- |
@@ -55,9 +55,11 @@ Both paths call the same stage functions — no duplicated logic.
 | `evaluate-content` | `Listing`+`TagSet` → `ContentEvaluation`   | mock (phase 4) |
 | `evaluate-rufus`   | `Listing`+`TagSet` → `DiscoverabilityResult` | mock (phase 2) |
 | `evaluate-llm-search` | `Listing`+`TagSet` → `DiscoverabilityResult` | mock (phase 3) |
-| `recommend`        | `Listing`+`TagSet`+`Evaluation` → `Recommendation[]` | mock (phase 4) |
+| `generate`         | `Listing`+`TagSet` → `GeneratedListing` (persisted) | real (4 chained schema-strict calls) |
 
-The research/tag split mirrors scrape/parse: `research` is the expensive web-enabled call (persisted), `tag` is the cheap bucketing call that can re-run against stored research. The tag model (scope × type axes, one-placement rule) is specified in [sku-tags.md](sku-tags.md).
+The research/tag split mirrors scrape/parse: `research` is the expensive web-enabled call (persisted), `tag` is the cheap bucketing call that can re-run against stored research. The tag model (scope × type axes, one-placement rule) is specified in [sku-tags.md](reference/sku-tags.md).
+
+`generate` turns the stored `TagSet` + `Listing` into the four post-July-2026 Amazon fields (Title ≤75, Item Highlights ≤125, five About This Item bullets <1,000 together, Description ≤2,000) via four chained no-web calls on the fast model tier (`OPENAI_MODEL_FAST`, falls back to `OPENAI_MODEL`) — each later prompt sees the earlier fields to avoid repetition. Hard limits and the mechanical compliance gates (drop inferred+complianceSensitive, drop confidence <0.6) are enforced in code with one corrective re-prompt per field. Field rules and prompts: [amazon-generation-prompts.md](reference/amazon-generation-prompts.md).
 
 ## API routes
 
@@ -73,7 +75,8 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 | POST   | `/evaluate/content`     | `{ listing, tags }` → `{ content }`                   |
 | POST   | `/evaluate/rufus`       | `{ listing, tags }` → `{ rufus }`                     |
 | POST   | `/evaluate/llm-search`  | `{ listing, tags }` → `{ llmSearch }`                 |
-| POST   | `/recommend`            | `{ listing, tags, evaluation }` → `{ recommendations }` |
+| POST   | `/generate`             | `{ input, refresh?, only? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; `only: title\|highlights\|bullets\|description` regenerates one field into the latest stored generation) |
+| GET    | `/generate`             | `?input=url\|asin` → `{ ref, generated }` (pure read of the latest stored generation, no LLM; 404 if never generated) |
 | POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
 | GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
 | POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
@@ -82,7 +85,7 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 
 ## Data model (current, in-memory)
 
-`Run` holds `input`, `status` (`queued|running|done|failed`), per-stage `StageState[]`, and a `RunResult` (`listing`, `research`, `tags`, `evaluation`, `recommendations`). See `domain/`.
+`Run` holds `input`, `status` (`queued|running|done|failed`), per-stage `StageState[]`, and a `RunResult` (`listing`, `research`, `tags`, `evaluation`, `generated`). See `domain/`.
 
 ## Artifact persistence (filesystem, versioned)
 
@@ -92,6 +95,7 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 - `tmp/parse/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer.
 - `tmp/research/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`SkuResearch`).
 - `tmp/tags/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`TagSet`).
+- `tmp/generate/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`GeneratedListing` — always a complete four-field document, even for `only` regenerations).
 
 `/parse` loads the latest raw HTML instead of re-scraping (BrightData requests cost money); `refetch: true` forces a fresh scrape. Likewise `/tags` loads the latest stored research instead of re-running the web-enabled LLM call; `refresh: true` forces new research.
 
@@ -102,7 +106,7 @@ When persistence lands (Postgres + a TS query layer), expected tables:
 - `users` — `id`, `email`, `company_domain`, `created_at`.
 - `runs` — `id`, `user_id`, `input`, `asin`, `marketplace`, `status`, `error`, `created_at`, `updated_at`.
 - `run_stages` — `id`, `run_id`, `name`, `status`, `started_at`, `finished_at`, `error`.
-- `run_results` — `run_id`, `listing` (jsonb), `research` (jsonb), `tags` (jsonb), `evaluation` (jsonb), `recommendations` (jsonb).
+- `run_results` — `run_id`, `listing` (jsonb), `research` (jsonb), `tags` (jsonb), `evaluation` (jsonb), `generated` (jsonb).
 - `usage` / `billing` — `user_id`, `runs_used`, `quota`, `plan`, `period`.
 
 ## Providers & config
@@ -110,6 +114,6 @@ When persistence lands (Postgres + a TS query layer), expected tables:
 Selected by env via factories (`createScraper`, `createLlmClient`):
 
 - Scrapers: `playwright` | `brightdata-unlocker` (PDP) | `brightdata-browser` (Rufus).
-- LLMs: `anthropic` | `openai` (Responses API: web search + strict structured output; model via `OPENAI_MODEL`) | `perplexity`.
+- LLMs: `anthropic` | `openai` (Responses API: web search + strict structured output; model via `OPENAI_MODEL`, `tier: 'fast'` requests via `OPENAI_MODEL_FAST` with fallback) | `perplexity`.
 
 Keys/zones in `.env` (see `.env.example`).

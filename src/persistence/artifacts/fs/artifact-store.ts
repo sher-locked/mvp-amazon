@@ -2,9 +2,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Listing, ListingRef } from '../../../domain/listing';
 import type { SkuResearch, TagSet } from '../../../domain/research';
+import type { GeneratedListing } from '../../../domain/generation';
 import type { ArtifactStore, RawArtifact, RawArtifactMeta } from '../artifact-store';
 
-type ArtifactKind = 'scrape' | 'parse' | 'research' | 'tags';
+type ArtifactKind = 'scrape' | 'parse' | 'research' | 'tags' | 'generate';
 
 interface RawPointer extends RawArtifactMeta {
   file: string;
@@ -74,6 +75,14 @@ export class FsArtifactStore implements ArtifactStore {
 
   async loadTags(ref: ListingRef): Promise<TagSet | null> {
     return this.loadVersioned<TagSet>('tags', ref);
+  }
+
+  async saveGenerated(ref: ListingRef, generated: GeneratedListing): Promise<void> {
+    return this.saveVersioned('generate', ref, generated);
+  }
+
+  async loadGenerated(ref: ListingRef): Promise<GeneratedListing | null> {
+    return this.loadVersioned<GeneratedListing>('generate', ref);
   }
 
   private async saveVersioned(kind: ArtifactKind, ref: ListingRef, value: unknown): Promise<void> {

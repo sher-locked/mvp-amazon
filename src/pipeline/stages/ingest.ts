@@ -30,10 +30,21 @@ const MARKET_TO_TLD: Record<Marketplace, string> = {
   AU: 'com.au',
 };
 
+/** Fail loudly on unknown domains — a silent US fallback once turned a typo'd
+ * amazon.co.in run into a fresh amazon.com scrape + research chain. */
 function marketFromHost(host: string): Marketplace {
   const m = host.match(/amazon\.([a-z.]+)$/i);
   const tld = m?.[1]?.toLowerCase();
-  return (tld && TLD_TO_MARKET[tld]) || 'US';
+  if (!tld) throw new ValidationError(`not an amazon url: ${host}`);
+  const market = TLD_TO_MARKET[tld];
+  if (!market) {
+    const nearest = Object.keys(TLD_TO_MARKET).find((known) => tld.endsWith(known));
+    throw new ValidationError(
+      `unsupported amazon domain "amazon.${tld}"` +
+        (nearest ? ` — did you mean amazon.${nearest}?` : ''),
+    );
+  }
+  return market;
 }
 
 function buildUrl(asin: string, market: Marketplace): string {

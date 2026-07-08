@@ -11,7 +11,7 @@ import { tag } from './stages/tag';
 import { evaluateContent } from './stages/evaluate-content';
 import { evaluateRufus } from './stages/evaluate-rufus';
 import { evaluateLlmSearch } from './stages/evaluate-llm-search';
-import { recommend } from './stages/recommend';
+import { generate } from './stages/generate';
 
 export interface OrchestratorDeps {
   repo: RunRepository;
@@ -74,11 +74,9 @@ export async function executeRun(runId: string, deps: OrchestratorDeps): Promise
       evaluateLlmSearch(listing, tags, ctx),
     );
     const evaluation = { content, rufus, llmSearch };
-    const recommendations = await runStage(run, repo, 'recommend', () =>
-      recommend({ listing, tags, evaluation }, ctx),
-    );
+    const generated = await runStage(run, repo, 'generate', () => generate(listing, tags, ctx));
 
-    run.result = { listing, research: skuResearch, tags, evaluation, recommendations };
+    run.result = { listing, research: skuResearch, tags, evaluation, generated };
     run.status = 'done';
   } catch (e) {
     run.status = 'failed';

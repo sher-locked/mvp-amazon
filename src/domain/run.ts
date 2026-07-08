@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { now } from '../lib/result';
 import type { Listing } from './listing';
 import type { SkuResearch, TagSet } from './research';
-import type { Evaluation, Recommendation } from './evaluation';
+import type { Evaluation } from './evaluation';
+import type { GeneratedListing } from './generation';
 
 export type RunStatus = 'queued' | 'running' | 'done' | 'failed';
 
@@ -15,7 +16,7 @@ export const STAGE_NAMES = [
   'evaluate-content',
   'evaluate-rufus',
   'evaluate-llm-search',
-  'recommend',
+  'generate',
 ] as const;
 
 export type StageName = (typeof STAGE_NAMES)[number];
@@ -34,7 +35,7 @@ export interface RunResult {
   research: SkuResearch;
   tags: TagSet;
   evaluation: Evaluation;
-  recommendations: Recommendation[];
+  generated: GeneratedListing;
 }
 
 export interface Run {

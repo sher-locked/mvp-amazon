@@ -32,12 +32,3 @@ export interface Evaluation {
   rufus: DiscoverabilityResult;
   llmSearch: DiscoverabilityResult;
 }
-
-export type Priority = 'high' | 'medium' | 'low';
-
-export interface Recommendation {
-  asset: ContentAsset | 'general';
-  priority: Priority;
-  change: string;
-  rationale: string;
-}
