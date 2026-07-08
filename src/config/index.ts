@@ -5,6 +5,11 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.string().default('info'),
 
+  /** shared key guarding the API; unset = guard disabled (local dev) */
+  ACCESS_KEY: z.string().optional(),
+  /** artifact store base dir; unset = <cwd>/tmp (hosted: a mounted volume) */
+  ARTIFACTS_DIR: z.string().optional(),
+
   DEFAULT_SCRAPER: z
     .enum(['playwright', 'brightdata-unlocker', 'brightdata-browser'])
     .default('brightdata-unlocker'),

@@ -24,10 +24,12 @@ The pipeline is a sequence of small steps in `pipeline/stages/`:
 
 `ingest → scrape → parse → research → tag → evaluate(content, rufus, llm-search) → generate`
 
-Each step takes typed input, returns typed output, and never reaches into another step's internals. `research` (web-enabled LLM, expensive) and `tag` (strict structured output, cheap) mirror the scrape/parse split — the intermediate is persisted so re-bucketing is free. `generate` chains four schema-strict fast-tier calls (Title → Highlights → Bullets → Description) over the stored `TagSet`; hard char limits and mechanical compliance gates live in code, not prompts. Steps are exposed two ways, both calling the same functions:
+Each step takes typed input, returns typed output, and never reaches into another step's internals. `research` (web-enabled LLM, expensive) and `tag` (strict structured output, cheap) mirror the scrape/parse split — the intermediate is persisted so re-bucketing is free. `generate` makes ONE single-shot schema-strict fast-tier call producing all four fields in order (`llm/prompts/generate/listing.ts`); hard char limits and mechanical compliance gates live in code, not prompts — all violations are collected into one corrective full-document re-prompt. Steps are exposed two ways, both calling the same functions:
 
 - **Individually** — synchronous endpoints (`/scrape`, `/parse`, `/research`, `/tags`, `/evaluate/*`, `/generate`) for de-risking and reuse.
 - **Together** — the async pipeline via `pipeline/orchestrator.ts`, which owns sequencing and run status (`/runs`).
+
+A static dark-mode eval UI (`public/index.html`, served by `@fastify/static`) fronts `/parse`, `/tags`, `/generate` for teammates. When `ACCESS_KEY` is set, `server/access-guard.ts` requires `x-access-key` on every route except the UI page and `/health`; unset disables the guard (local dev). Artifact store base dir is `ARTIFACTS_DIR` (default `<cwd>/tmp`; a Railway volume in prod — see `docs/deploy.md`).
 
 ## Architecture Principles
 

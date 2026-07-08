@@ -37,7 +37,8 @@ Both paths call the same stage functions — no duplicated logic.
 | `jobs/`            | In-process job queue (durable queue later).                          |
 | `auth/`            | Company-email OTP (stub).                                             |
 | `billing/`         | Quota / unlock paywall (stub).                                        |
-| `server/`          | Fastify app, error handler, route registration, request schemas.     |
+| `server/`          | Fastify app, error handler, access guard, route registration, request schemas. |
+| `public/`          | Static eval UI: one self-contained dark-mode `index.html` (no build step), served via `@fastify/static`. |
 | `container.ts`     | Composition root; wires everything once at startup.                  |
 | `spikes/`          | Throwaway de-risking experiments, promoted into `src/` once proven.   |
 
@@ -55,11 +56,11 @@ Both paths call the same stage functions — no duplicated logic.
 | `evaluate-content` | `Listing`+`TagSet` → `ContentEvaluation`   | mock (phase 4) |
 | `evaluate-rufus`   | `Listing`+`TagSet` → `DiscoverabilityResult` | mock (phase 2) |
 | `evaluate-llm-search` | `Listing`+`TagSet` → `DiscoverabilityResult` | mock (phase 3) |
-| `generate`         | `Listing`+`TagSet` → `GeneratedListing` (persisted) | real (4 chained schema-strict calls) |
+| `generate`         | `Listing`+`TagSet` → `GeneratedListing` (persisted) | real (one single-shot schema-strict call) |
 
 The research/tag split mirrors scrape/parse: `research` is the expensive web-enabled call (persisted), `tag` is the cheap bucketing call that can re-run against stored research. The tag model (scope × type axes, one-placement rule) is specified in [sku-tags.md](reference/sku-tags.md).
 
-`generate` turns the stored `TagSet` + `Listing` into the four post-July-2026 Amazon fields (Title ≤75, Item Highlights ≤125, five About This Item bullets <1,000 together, Description ≤2,000) via four chained no-web calls on the fast model tier (`OPENAI_MODEL_FAST`, falls back to `OPENAI_MODEL`) — each later prompt sees the earlier fields to avoid repetition. Hard limits and the mechanical compliance gates (drop inferred+complianceSensitive, drop confidence <0.6) are enforced in code with one corrective re-prompt per field. Field rules and prompts: [amazon-generation-prompts.md](reference/amazon-generation-prompts.md).
+`generate` turns the stored `TagSet` + `Listing` into the four post-July-2026 Amazon fields (Title ≤75, Item Highlights ≤125, five About This Item bullets <1,000 together, Description ≤2,000) via ONE single-shot no-web call on the fast model tier (`OPENAI_MODEL_FAST`, falls back to `OPENAI_MODEL`) — one combined prompt (`llm/prompts/generate/listing.ts`) generates all four fields in order with an in-prompt no-repetition rule. Hard limits and the mechanical compliance gates (drop inferred+complianceSensitive, drop confidence <0.6) are enforced in code; every limit violation is collected and fed back in a single corrective re-prompt that regenerates the whole document (then 502). Field rules: [amazon-generation-prompts.md](reference/amazon-generation-prompts.md).
 
 ## API routes
 
@@ -75,13 +76,16 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 | POST   | `/evaluate/content`     | `{ listing, tags }` → `{ content }`                   |
 | POST   | `/evaluate/rufus`       | `{ listing, tags }` → `{ rufus }`                     |
 | POST   | `/evaluate/llm-search`  | `{ listing, tags }` → `{ llmSearch }`                 |
-| POST   | `/generate`             | `{ input, refresh?, only? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; `only: title\|highlights\|bullets\|description` regenerates one field into the latest stored generation) |
+| POST   | `/generate`             | `{ input, refresh? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; always regenerates the full four-field document in one call) |
 | GET    | `/generate`             | `?input=url\|asin` → `{ ref, generated }` (pure read of the latest stored generation, no LLM; 404 if never generated) |
 | POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
 | GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
 | POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
 | POST   | `/auth/verify`          | `{ email, code }` → `{ user }` (stub)                 |
 | GET    | `/health`               | → `{ status }`                                        |
+| GET    | `/`                     | static eval UI (`public/index.html`)                  |
+
+When `ACCESS_KEY` is set, every route except `/`, `/index.html`, `/favicon.ico`, and `/health` requires `x-access-key` (or `?key=`) to match, else 401 (`server/access-guard.ts`). Unset = guard disabled (local dev). The UI keeps the key in localStorage and sends it on every call.
 
 ## Data model (current, in-memory)
 
@@ -95,7 +99,7 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 - `tmp/parse/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer.
 - `tmp/research/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`SkuResearch`).
 - `tmp/tags/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`TagSet`).
-- `tmp/generate/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`GeneratedListing` — always a complete four-field document, even for `only` regenerations).
+- `tmp/generate/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`GeneratedListing` — always a complete four-field document).
 
 `/parse` loads the latest raw HTML instead of re-scraping (BrightData requests cost money); `refetch: true` forces a fresh scrape. Likewise `/tags` loads the latest stored research instead of re-running the web-enabled LLM call; `refresh: true` forces new research.
 
@@ -116,4 +120,8 @@ Selected by env via factories (`createScraper`, `createLlmClient`):
 - Scrapers: `playwright` | `brightdata-unlocker` (PDP) | `brightdata-browser` (Rufus).
 - LLMs: `anthropic` | `openai` (Responses API: web search + strict structured output; model via `OPENAI_MODEL`, `tier: 'fast'` requests via `OPENAI_MODEL_FAST` with fallback) | `perplexity`.
 
-Keys/zones in `.env` (see `.env.example`).
+Keys/zones in `.env` (see `.env.example`). `ACCESS_KEY` enables the shared-key API guard; `ARTIFACTS_DIR` relocates the artifact store (defaults to `<cwd>/tmp`; on Railway a volume at `/data`).
+
+## Deployment
+
+Railway, single service + volume — runbook in [deploy.md](deploy.md).

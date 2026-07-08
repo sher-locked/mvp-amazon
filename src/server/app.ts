@@ -1,7 +1,10 @@
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { ZodError } from 'zod';
 import type { Container } from '../container';
 import { AppError } from '../lib/errors';
+import { registerAccessGuard } from './access-guard';
 import { registerHealthRoutes } from './routes/health';
 import { registerRunRoutes } from './routes/runs';
 import { registerAuthRoutes } from './routes/auth';
@@ -30,6 +33,9 @@ export function buildApp(c: Container): FastifyInstance {
     c.logger.error({ err }, 'unhandled error');
     return reply.code(500).send({ error: 'INTERNAL' });
   });
+
+  registerAccessGuard(app, c.config);
+  void app.register(fastifyStatic, { root: join(process.cwd(), 'public') });
 
   registerHealthRoutes(app);
   registerAuthRoutes(app, c);

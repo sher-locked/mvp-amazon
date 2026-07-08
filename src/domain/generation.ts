@@ -1,5 +1,3 @@
-export type GeneratedFieldName = 'title' | 'highlights' | 'bullets' | 'description';
-
 /** One generated listing field; chars counted in code, never trusted from the LLM. */
 export interface GeneratedField {
   text: string;

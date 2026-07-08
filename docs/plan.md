@@ -71,6 +71,19 @@ Turn the stored `TagSet` + `Listing` into Title (≤75), Item Highlights (≤125
 
 Notes: Live-verified on `UK_B0C4BG7R2L` (Mr Muscle spray: title 72, highlights 125, bullets 926/5, description 1,939) and `IN_B07M8H2HR4` (adidas Drogo: title 71, highlights 119, bullets 910/5, description 1,612 — under target, over is what fails). Full run ~2–3 min on the default `gpt-5.5` fallback (`OPENAI_MODEL_FAST` unset); `only: 'title'` regeneration ~1 min, one call, other fields byte-identical, new full-document version in `tmp/generate`. The corrective retry fired in anger once: first description attempt came back 2,049 chars twice with a soft "compress" nudge, so the retry prompt now demands cutting whole sentences with a stated char count — passed after that. `GET /generate` needs the marketplace-bearing URL (bare ASIN ingests as US), same as `/tags`. Post-launch fixes: `ingest` now 400s on unknown amazon domains with a "did you mean" hint (a typo'd amazon.co.in used to silently become a US ref and re-run the full scrape→research→tag chain against amazon.com), and `only` regeneration checks the stored-generation pointer before any scraping or LLM work (was 404ing after ~2 min of wasted calls).
 
+## M4 — Hosted eval tool (single-shot generate, auth guard, eval UI, Railway) 🔶
+
+Turn the local MVP into a teammate-facing eval tool.
+
+- ✅ Single-shot generation replaces the four chained calls: one combined prompt (`llm/prompts/generate/listing.ts`) + strict `generated_listing` schema → all four fields in one `tier: 'fast'` call; all limit violations collected and fixed in ONE corrective full-document re-prompt (then 502). Per-field prompts and the `only`/`prior` regeneration mode deleted (git history is the archive).
+- ✅ Shared-key auth guard: `ACCESS_KEY` env (unset = disabled); `server/access-guard.ts` onRequest hook; `/`, `/index.html`, `/favicon.ico`, `/health` public, everything else needs `x-access-key` (or `?key=`).
+- ✅ `ARTIFACTS_DIR` env relocates the fs artifact store (Railway volume at `/data`); defaults to `<cwd>/tmp`.
+- ✅ Static eval UI: `public/index.html` (self-contained dark page, no build step) via `@fastify/static` — parse/tags/generate actions + stored reads, tag matrix table, char meters, image thumbnails, key in localStorage, elapsed timers on slow calls.
+- ✅ `docs/deploy.md` Railway runbook (volume, env vars, seeding, post-deploy checks).
+- ⬜ Deploy to Railway + run the post-deploy verification list (needs the user's Railway account).
+
+Notes: Live-verified locally. Single-shot generate on stored tags: `UK_B0C4BG7R2L` in ~96s (title 73, highlights 125, bullets 821/5, description 1,905 — all within limits, no corrective retry) and `IN_B07M8H2HR4` in ~55s (title 72, highlights 122, bullets 780/5, description 1,398); one LLM call each, new versions in `tmp/generate`. Single-shot runs materially faster than the ~2–3 min chained flow but lands further under the fill targets (bullets ~820 vs ~926, IN description 1,398 vs 1,612) — watch limit-packing quality during eval. Guard verified all ways: key set → `/health` + `/` 200 bare, API 401 without/with wrong key, 200 via header and `?key=`; key unset → everything open. UI verified in a browser end-to-end on stored artifacts: parse render with images, 86-tag matrix, generation view with char meters and per-bullet counts.
+
 ## Phase 5 — Persistence, Auth, Billing ⬜
 
 Make runs durable and gated.

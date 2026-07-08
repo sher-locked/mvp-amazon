@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Listing Eval</title>
+<style>
+  :root {
+    --bg: #090b0f;
+    --bg-grad: radial-gradient(ellipse 80% 50% at 50% -20%, #1a2233 0%, transparent 70%);
+    --panel: #11151c;
+    --panel-2: #181d27;
+    --border: #252d3a;
+    --border-soft: #1c2330;
+    --text: #e8ecf3;
+    --text-soft: #b4bcc9;
+    --muted: #6e7a8c;
+    --accent: #7eb8ff;
+    --accent-dim: #3d6a9e;
+    --good: #5dd39e;
+    --warn: #e8c468;
+    --bad: #f07070;
+    --chip: #1e2532;
+    --step-done: #2a3d32;
+    --step-done-border: #3d5c48;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: var(--bg-grad);
+    color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border-soft);
+    background: rgba(17, 21, 28, 0.85);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  header .spacer { flex: 1; }
+  label.key-label { color: var(--muted); font-size: 12px; font-weight: 500; }
+  input[type="text"], input[type="password"] {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: var(--accent-dim);
+    box-shadow: 0 0 0 3px rgba(126, 184, 255, 0.1);
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 28px 100px; }
+  .url-block { margin-bottom: 36px; }
+  .url-block input[type="text"] {
+    width: 100%;
+    font-size: 15px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  .url-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.4; }
+
+  /* step cards */
+  .step {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, opacity 0.2s;
+  }
+  .step.locked { opacity: 0.45; pointer-events: none; }
+  .step.done { border-color: var(--step-done-border); }
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .step.done .step-num {
+    background: var(--step-done);
+    border-color: var(--step-done-border);
+    color: var(--good);
+  }
+  .step.running .step-num { color: var(--accent); border-color: var(--accent-dim); }
+  .step-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+  .step-meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .step-body { padding: 20px; overflow-x: auto; }
+  .step-body.empty { color: var(--muted); font-size: 13px; }
+  .step-foot {
+    padding: 0 20px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .step-foot.hidden { display: none; }
+
+  button.step-btn {
+    background: linear-gradient(180deg, #1e2a3d 0%, #182030 100%);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button.step-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #243348 0%, #1c2a3c 100%);
+    border-color: var(--accent);
+  }
+  button.step-btn:disabled { opacity: 0.55; cursor: wait; }
+  button.step-btn .timer { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+  .error {
+    background: #1f1418;
+    border: 1px solid #4a2a30;
+    color: #f0b0ad;
+    border-radius: 8px;
+    padding: 12px 14px;
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+  }
+  h3.field {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 20px 0 8px;
+    font-weight: 600;
+  }
+  h3.field:first-child { margin-top: 0; }
+  .listing-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--text); }
+  ul.bullets { margin: 4px 0; padding-left: 20px; color: var(--text-soft); }
+  ul.bullets li { margin-bottom: 5px; }
+  .desc { white-space: pre-wrap; color: var(--text-soft); font-size: 14px; }
+  details {
+    margin-top: 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: var(--panel-2);
+  }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 500; }
+  details .desc { font-size: 13px; margin-top: 8px; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .thumbs figure { margin: 0; text-align: center; }
+  .thumbs img {
+    height: 108px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    object-fit: contain;
+  }
+  .thumbs figcaption { font-size: 10px; color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
+  table.matrix { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.matrix th, table.matrix td {
+    border: 1px solid var(--border-soft);
+    padding: 9px 10px;
+    vertical-align: top;
+    text-align: left;
+  }
+  table.matrix th { background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table.matrix td.scope { background: var(--panel-2); color: var(--text-soft); font-weight: 600; white-space: nowrap; }
+  table.matrix td.none { color: var(--border); text-align: center; }
+  .chip {
+    display: inline-block;
+    background: var(--chip);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 3px 10px;
+    margin: 2px 4px 2px 0;
+    font-size: 12px;
+    color: var(--text-soft);
+    cursor: default;
+  }
+  .chip .inf { color: var(--warn); font-weight: 700; margin-left: 2px; }
+  .chip .comp { color: var(--bad); font-weight: 700; margin-left: 2px; }
+  .legend { color: var(--muted); font-size: 11px; margin-top: 12px; }
+  .identity { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .identity b { color: var(--text); font-weight: 600; }
+  .meter {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 12px;
+    margin-left: 8px;
+    background: var(--chip);
+    border: 1px solid var(--border-soft);
+    vertical-align: middle;
+    font-weight: 500;
+  }
+  .meter.ok { color: var(--good); border-color: #2d4a3a; }
+  .meter.under { color: var(--warn); border-color: #4a4028; }
+  .meter.over { color: var(--bad); border-color: #4a2a2a; }
+  ol.gen-bullets { margin: 4px 0; padding-left: 20px; color: var(--text-soft); }
+  ol.gen-bullets li { margin-bottom: 8px; line-height: 1.45; }
+  .bullet-count { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Listing Eval</h1>
+  <div class="spacer"></div>
+  <label class="key-label" for="access-key">access key</label>
+  <input type="password" id="access-key" placeholder="unset = open" autocomplete="off" size="22" />
+</header>
+
+<main>
+  <div class="url-block">
+    <input type="text" id="listing-input" placeholder="Amazon product URL or ASIN" />
+    <div class="url-hint">Full marketplace URL preferred — e.g. https://www.amazon.co.uk/dp/B0C4BG7R2L. A bare ASIN defaults to amazon.com.</div>
+  </div>
+
+  <article class="step" id="step-1">
+    <div class="step-head">
+      <span class="step-num">1</span>
+      <span class="step-title">Scrape listing</span>
+      <span class="step-meta" id="meta-1"></span>
+    </div>
+    <div class="step-body empty" id="out-1">Parsed listing will appear here.</div>
+    <div class="step-foot" id="foot-1">
+      <button class="step-btn" id="btn-1">Scrape listing</button>
+    </div>
+  </article>
+
+  <article class="step locked" id="step-2">
+    <div class="step-head">
+      <span class="step-num">2</span>
+      <span class="step-title">Research &amp; tag</span>
+      <span class="step-meta" id="meta-2"></span>
+    </div>
+    <div class="step-body empty" id="out-2">Tag matrix will appear here.</div>
+    <div class="step-foot hidden" id="foot-2">
+      <button class="step-btn" id="btn-2">Research &amp; tag</button>
+    </div>
+  </article>
+
+  <article class="step locked" id="step-3">
+    <div class="step-head">
+      <span class="step-num">3</span>
+      <span class="step-title">Generate listing</span>
+      <span class="step-meta" id="meta-3"></span>
+    </div>
+    <div class="step-body empty" id="out-3">Generated fields will appear here.</div>
+    <div class="step-foot hidden" id="foot-3">
+      <button class="step-btn" id="btn-3">Generate listing</button>
+    </div>
+  </article>
+</main>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+
+const state = { s1: false, s2: false, s3: false };
+let lastHydrated = '';
+
+// --- persistence -------------------------------------------------------------
+const keyInput = $('access-key');
+keyInput.value = localStorage.getItem('accessKey') || '';
+keyInput.addEventListener('input', () => localStorage.setItem('accessKey', keyInput.value));
+
+const inputBox = $('listing-input');
+inputBox.value = localStorage.getItem('lastInput') || '';
+inputBox.addEventListener('input', () => localStorage.setItem('lastInput', inputBox.value));
+inputBox.addEventListener('change', () => {
+  localStorage.setItem('lastInput', inputBox.value);
+  const v = inputBox.value.trim();
+  if (v !== lastHydrated) {
+    resetFlow();
+    if (v) hydrate();
+  }
+});
+
+// --- fetch -------------------------------------------------------------------
+async function api(method, path, body) {
+  const headers = { 'x-access-key': keyInput.value };
+  if (body) headers['content-type'] = 'application/json';
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { error: 'NON_JSON', message: text.slice(0, 500) }; }
+  if (!res.ok) throw Object.assign(new Error('api error'), { status: res.status, payload: json });
+  return json;
+}
+
+function requireInput() {
+  const v = inputBox.value.trim();
+  if (!v) {
+    inputBox.focus();
+    throw Object.assign(new Error('no input'), { status: 0, payload: { error: 'INPUT', message: 'Enter an Amazon URL or ASIN first.' } });
+  }
+  return v;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+function showError(outId, err) {
+  const payload = err.payload || { error: 'NETWORK', message: String(err) };
+  const head = err.status ? `HTTP ${err.status}` : 'Error';
+  $(outId).innerHTML = `<div class="error">${esc(head)}\n${esc(JSON.stringify(payload, null, 2))}</div>`;
+}
+
+// --- step UI helpers ---------------------------------------------------------
+function setStep(n, { status, meta, html, showBtn }) {
+  const el = $('step-' + n);
+  const out = $('out-' + n);
+  const foot = $('foot-' + n);
+  el.classList.remove('locked', 'done', 'running');
+  if (status === 'locked') el.classList.add('locked');
+  if (status === 'done') el.classList.add('done');
+  if (status === 'running') el.classList.add('running');
+  if (meta !== undefined) $('meta-' + n).textContent = meta;
+  if (html !== undefined) {
+    out.innerHTML = html;
+    out.classList.toggle('empty', !html);
+  }
+  if (showBtn !== undefined) foot.classList.toggle('hidden', !showBtn);
+}
+
+function unlockNext(n) {
+  if (n <= 2 && state['s' + n]) {
+    setStep(n + 1, { status: 'idle', showBtn: !state['s' + (n + 1)] });
+  }
+}
+
+function resetFlow() {
+  lastHydrated = '';
+  state.s1 = state.s2 = state.s3 = false;
+  setStep(1, { status: 'idle', meta: '', html: '', showBtn: true });
+  $('out-1').classList.add('empty');
+  $('out-1').textContent = 'Parsed listing will appear here.';
+  setStep(2, { status: 'locked', meta: '', html: '', showBtn: false });
+  $('out-2').classList.add('empty');
+  $('out-2').textContent = 'Tag matrix will appear here.';
+  setStep(3, { status: 'locked', meta: '', html: '', showBtn: false });
+  $('out-3').classList.add('empty');
+  $('out-3').textContent = 'Generated fields will appear here.';
+}
+
+async function runAction(button, fn) {
+  const original = button.textContent;
+  const start = Date.now();
+  button.disabled = true;
+  const tick = setInterval(() => {
+    const s = Math.floor((Date.now() - start) / 1000);
+    button.innerHTML = `${original} <span class="timer">${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</span>`;
+  }, 1000);
+  try { await fn(); }
+  finally {
+    clearInterval(tick);
+    button.textContent = original;
+    button.disabled = false;
+  }
+}
+
+function markDone(n) {
+  state['s' + n] = true;
+  setStep(n, { status: 'done', showBtn: false });
+  unlockNext(n);
+}
+
+// --- renderers ---------------------------------------------------------------
+function renderListing(listing) {
+  const imgs = [];
+  if (listing.heroImage) imgs.push({ ...listing.heroImage, label: 'hero' });
+  for (const im of listing.secondaryImages || []) imgs.push({ ...im, label: '' });
+  const parts = [];
+  parts.push(`<h3 class="field">Title</h3><div class="listing-title">${esc(listing.title)}</div>`);
+  parts.push(`<h3 class="field">Bullets</h3><ul class="bullets">${(listing.bullets || []).map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`);
+  parts.push(`<h3 class="field">Description</h3><div class="desc">${esc(listing.description)}</div>`);
+  if (listing.aplusContent) {
+    parts.push(`<details><summary>A+ content (${listing.aplusContent.length.toLocaleString()} chars)</summary><div class="desc">${esc(listing.aplusContent)}</div></details>`);
+  }
+  if (imgs.length) {
+    parts.push(`<h3 class="field">Images</h3><div class="thumbs">${imgs.map((im) =>
+      `<figure><img src="${esc(im.url)}" alt="${esc(im.alt || '')}" loading="lazy" /><figcaption>${esc(im.label || im.alt || '')}</figcaption></figure>`).join('')}</div>`);
+  }
+  return parts.join('');
+}
+
+const SCOPES = ['brand', 'category', 'family', 'sku'];
+const TYPES = ['fact', 'functional', 'sensory', 'emotional', 'occasion', 'audience'];
+
+function chip(t) {
+  const tip = `confidence ${t.confidence}${t.evidence ? ' — ' + t.evidence : ''}`;
+  return `<span class="chip" title="${esc(tip)}">${esc(t.value)}${t.source === 'inferred' ? '<span class="inf" title="inferred">*</span>' : ''}${t.complianceSensitive ? '<span class="comp" title="compliance-sensitive">!</span>' : ''}</span>`;
+}
+
+function renderTags(identity, tags) {
+  const id = identity
+    ? `<div class="identity"><b>${esc(identity.displayName)}</b> — ${esc(identity.brand?.name || '')} · ${esc(identity.category || '')}</div>`
+    : '';
+  const head = `<tr><th>scope</th>${TYPES.map((t) => `<th>${t}</th>`).join('')}</tr>`;
+  const rows = SCOPES.map((scope) => {
+    const cells = TYPES.map((type) => {
+      const cell = (tags || []).filter((t) => t.scope === scope && t.type === type);
+      return cell.length ? `<td>${cell.map(chip).join('')}</td>` : `<td class="none">—</td>`;
+    });
+    return `<tr><td class="scope">${scope}</td>${cells.join('')}</tr>`;
+  }).join('');
+  const legend = `<div class="legend"><span class="inf" style="color:var(--warn)">*</span> inferred · <span style="color:var(--bad)">!</span> compliance-sensitive · hover for confidence</div>`;
+  return `${id}<table class="matrix">${head}${rows}</table>${legend}`;
+}
+
+function meter(chars, hard, targetLow) {
+  const cls = chars > hard ? 'over' : chars >= targetLow ? 'ok' : 'under';
+  return `<span class="meter ${cls}">${chars} / ${hard}</span>`;
+}
+
+function renderGenerated(g) {
+  const parts = [];
+  parts.push(`<h3 class="field">Title ${meter(g.title.chars, 75, 70)}</h3><div class="listing-title">${esc(g.title.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.title.rationale)}</div></details>`);
+  parts.push(`<h3 class="field">Item highlights ${meter(g.itemHighlights.chars, 125, 118)}</h3><div>${esc(g.itemHighlights.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.itemHighlights.rationale)}</div></details>`);
+  parts.push(`<h3 class="field">Bullets ${meter(g.bullets.chars, 1000, 900)}</h3><ol class="gen-bullets">${g.bullets.items.map((b) => `<li>${esc(b)}<span class="bullet-count">${b.length}</span></li>`).join('')}</ol><details><summary>rationale</summary><div class="desc">${esc(g.bullets.rationale)}</div></details>`);
+  parts.push(`<h3 class="field">Description ${meter(g.description.chars, 2000, 1900)}</h3><div class="desc">${esc(g.description.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.description.rationale)}</div></details>`);
+  return parts.join('');
+}
+
+// --- step actions (POST reuses stored artifacts unless missing) --------------
+$('btn-1').addEventListener('click', () =>
+  runAction($('btn-1'), async () => {
+    try {
+      const input = requireInput();
+      setStep(1, { status: 'running', meta: 'running…' });
+      const res = await api('POST', '/parse', { input });
+      $('out-1').innerHTML = renderListing(res.listing);
+      $('out-1').classList.remove('empty');
+      $('meta-1').textContent = `${res.listing.ref.marketplace}_${res.listing.ref.asin} · ${res.source}`;
+      markDone(1);
+    } catch (e) {
+      setStep(1, { status: 'idle', meta: '' });
+      showError('out-1', e);
+    }
+  }));
+
+$('btn-2').addEventListener('click', () =>
+  runAction($('btn-2'), async () => {
+    try {
+      const input = requireInput();
+      setStep(2, { status: 'running', meta: 'running… (up to ~3 min if research needed)' });
+      const res = await api('POST', '/tags', { input });
+      $('out-2').innerHTML = renderTags(res.identity, res.tags);
+      $('out-2').classList.remove('empty');
+      $('meta-2').textContent = `${res.ref.marketplace}_${res.ref.asin} · ${res.tags.length} tags · ${res.source}`;
+      markDone(2);
+    } catch (e) {
+      setStep(2, { status: 'idle', meta: '', showBtn: true });
+      showError('out-2', e);
+    }
+  }));
+
+$('btn-3').addEventListener('click', () =>
+  runAction($('btn-3'), async () => {
+    try {
+      const input = requireInput();
+      setStep(3, { status: 'running', meta: 'running… (1–2 min)' });
+      const res = await api('POST', '/generate', { input });
+      $('out-3').innerHTML = renderGenerated(res.generated);
+      $('out-3').classList.remove('empty');
+      $('meta-3').textContent = `${res.ref.marketplace}_${res.ref.asin} · tags ${res.source} · ${res.generated.generatedAt}`;
+      markDone(3);
+    } catch (e) {
+      setStep(3, { status: 'idle', meta: '', showBtn: true });
+      showError('out-3', e);
+    }
+  }));
+
+// --- hydrate stored artifacts on load / when URL already set -----------------
+async function hydrate() {
+  const input = inputBox.value.trim();
+  if (!input) return;
+  lastHydrated = input;
+
+  // step 1: POST /parse reuses stored HTML — fast when already scraped
+  try {
+    const res = await api('POST', '/parse', { input });
+    $('out-1').innerHTML = renderListing(res.listing);
+    $('out-1').classList.remove('empty');
+    $('meta-1').textContent = `${res.listing.ref.marketplace}_${res.listing.ref.asin} · ${res.source}`;
+    markDone(1);
+  } catch { /* no stored listing yet — step 1 button stays */ }
+
+  // steps 2 & 3: pure reads, no LLM
+  try {
+    const res = await api('GET', `/tags?input=${encodeURIComponent(input)}`);
+    $('out-2').innerHTML = renderTags(res.identity, res.tags);
+    $('out-2').classList.remove('empty');
+    $('meta-2').textContent = `${res.ref.marketplace}_${res.ref.asin} · ${res.tags.length} tags · stored`;
+    markDone(2);
+  } catch { /* not tagged yet */ }
+
+  try {
+    const res = await api('GET', `/generate?input=${encodeURIComponent(input)}`);
+    $('out-3').innerHTML = renderGenerated(res.generated);
+    $('out-3').classList.remove('empty');
+    $('meta-3').textContent = `${res.ref.marketplace}_${res.ref.asin} · stored · ${res.generated.generatedAt}`;
+    markDone(3);
+  } catch { /* not generated yet */ }
+}
+
+if (inputBox.value.trim()) hydrate();
+</script>
+</body>
+</html>

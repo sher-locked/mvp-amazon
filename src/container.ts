@@ -30,7 +30,7 @@ export function buildContainer(config: Config): Container {
   const queue = new JobQueue(logger);
   const getScraper = createScraperResolver(config);
   const llm = createLlmClient(config.DEFAULT_LLM, config);
-  const artifacts = new FsArtifactStore(join(process.cwd(), 'tmp'));
+  const artifacts = new FsArtifactStore(config.ARTIFACTS_DIR ?? join(process.cwd(), 'tmp'));
 
   return {
     config,

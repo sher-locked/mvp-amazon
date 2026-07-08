@@ -102,7 +102,6 @@ export const evaluateBody = z.object({ listing: listingSchema, tags: tagSetSchem
 export const generateBody = z.object({
   input: z.string().min(1, 'input (url or ASIN) is required'),
   refresh: z.boolean().optional(),
-  only: z.enum(['title', 'highlights', 'bullets', 'description']).optional(),
 });
 
 export const getGenerateQuery = z.object({
