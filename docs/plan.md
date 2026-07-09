@@ -84,6 +84,19 @@ Turn the local MVP into a teammate-facing eval tool.
 
 Notes: Live-verified locally. Single-shot generate on stored tags: `UK_B0C4BG7R2L` in ~96s (title 73, highlights 125, bullets 821/5, description 1,905 — all within limits, no corrective retry) and `IN_B07M8H2HR4` in ~55s (title 72, highlights 122, bullets 780/5, description 1,398); one LLM call each, new versions in `tmp/generate`. Single-shot runs materially faster than the ~2–3 min chained flow but lands further under the fill targets (bullets ~820 vs ~926, IN description 1,398 vs 1,612) — watch limit-packing quality during eval. Guard verified all ways: key set → `/health` + `/` 200 bare, API 401 without/with wrong key, 200 via header and `?key=`; key unset → everything open. UI verified in a browser end-to-end on stored artifacts: parse render with images, 86-tag matrix, generation view with char meters and per-bullet counts.
 
+## M5 — Editable prompts (teammate prompt iteration) ✅
+
+Expose the three LLM system prompts (research / tag / generate) so teammates can edit, test, and revert them from the eval tool. Decisions: system prompt only (user-message wiring stays code); research's `## Output` JSON contract is a code-owned suffix always appended (tag/generate are provider-schema-enforced, safe to edit freely); overrides are global + versioned (no per-user, no draft runs); separate editor page.
+
+- ✅ `PromptStore` contract + versioned fs impl (`tmp/prompts/<slot>/`; revert deletes only the latest pointer, history stays). Wired via `PipelineContext`.
+- ✅ `llm/prompts/registry.ts` — slot metadata (title, constraints copy, inputs note, default text, research fixed suffix) + `resolvePrompt` (override else default).
+- ✅ Provenance: stages stamp `promptVersion` (`default#<hash8>` | `custom#<ISOts>`) into research/tags/generate artifacts; surfaced in `/research`, `/tags` (+ `researchPromptVersion`), `/generate` responses.
+- ✅ `GET /prompts` · `PUT /prompts/:id` · `DELETE /prompts/:id` (Zod at the edge; covered by the access guard; `prompts.html` added to public paths).
+- ✅ `public/prompts.html` — per-slot editor (status chip, char count, save-with-note, revert, view-default, read-only appended contract, enforced-in-code panel). `index.html` — header link, prompt version in step meta, re-run buttons persist after done (re-run tag / re-run research + tag / re-run generate), stale hint when a stored artifact's prompt ≠ active.
+- ✅ Verified live on `UK_B0BGSWJPNF`: PUT tag override → POST /tags stamped `custom#…` (61 tags, artifact + response) → DELETE → back to `default#…`; fresh research ran through the split prompt + appended contract and parsed clean (`default#17d73bdb` stamped); generate stamped `default#8dd5c554` (70/125/935/1973 chars). UI driven end-to-end in a browser: save → custom chip → revert → default; hydrate shows provenance meta, re-run buttons, and the stale hint firing only where the artifact prompt differs.
+
+Notes: default versions are content hashes (`default#17d73bdb` research, `#c3360972` tag, `#8dd5c554` generate) — they change when the in-code default text changes. Concurrent saves are last-write-wins with every version retained. Out of v1: per-user prompts, draft (unsaved) runs, model/temperature toggles, history-browsing UI, per-ASIN "what the model sees" preview.
+
 ## Phase 5 — Persistence, Auth, Billing ⬜
 
 Make runs durable and gated.

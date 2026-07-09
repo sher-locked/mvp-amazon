@@ -12,7 +12,8 @@ export const researchReplySchema = z.object({
 
 export type ResearchReply = z.infer<typeof researchReplySchema>;
 
-const SYSTEM = `You are a product researcher for e-commerce SKUs. Given scraped Amazon PDP evidence, research the product on the web and resolve its identity, then write research notes.
+/** Default editable instructions for the research call (slot `research`). */
+export const RESEARCH_SYSTEM_DEFAULT = `You are a product researcher for e-commerce SKUs. Given scraped Amazon PDP evidence, research the product on the web and resolve its identity, then write research notes.
 
 ## Identity rules
 
@@ -36,9 +37,15 @@ Use web search to verify the brand (parent-brand relationship, positioning, repu
 
 ## Notes
 
-Write free-form research notes capturing everything a downstream tagger needs: brand positioning and hallmark claims, category norms, what distinguishes this family from sibling families, target audiences, usage occasions, sensory characteristics, and any compliance-sensitive claims (health, safety, efficacy) you saw — with where you saw them (listing vs web).
+Write free-form research notes capturing everything a downstream tagger needs: brand positioning and hallmark claims, category norms, what distinguishes this family from sibling families, target audiences, usage occasions, sensory characteristics, and any compliance-sensitive claims (health, safety, efficacy) you saw — with where you saw them (listing vs web).`;
 
-## Output
+/**
+ * Code-owned output contract, ALWAYS appended after the (possibly overridden)
+ * editable text. The research call has no provider-enforced schema — the reply
+ * is Zod-validated after the fact — so the shape instructions must survive any
+ * prompt edit.
+ */
+export const RESEARCH_OUTPUT_CONTRACT = `## Output
 
 Reply with ONLY a JSON object, no prose around it:
 {
@@ -53,9 +60,9 @@ Reply with ONLY a JSON object, no prose around it:
 }`;
 
 /** Call 1: web-enabled identity resolution + research notes. */
-export function identityMessages(listing: Listing): LlmMessage[] {
+export function identityMessages(system: string, listing: Listing): LlmMessage[] {
   return [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: system },
     { role: 'user', content: `Scraped Amazon PDP evidence:\n\n${renderEvidence(listing)}` },
   ];
 }

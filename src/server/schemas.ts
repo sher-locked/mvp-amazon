@@ -107,3 +107,12 @@ export const generateBody = z.object({
 export const getGenerateQuery = z.object({
   input: z.string().min(1, 'input (url or ASIN) is required'),
 });
+
+// literal ids (not imported from the registry) to keep server/schemas free of
+// llm imports — the prompt files themselves import schemas from here
+export const promptParams = z.object({ id: z.enum(['research', 'tag', 'generate']) });
+
+export const promptPutBody = z.object({
+  text: z.string().trim().min(20, 'prompt text is too short to be a real prompt').max(30_000),
+  note: z.string().trim().max(200).optional(),
+});

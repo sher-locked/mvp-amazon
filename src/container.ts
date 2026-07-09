@@ -6,6 +6,7 @@ import { createLlmClient } from './llm';
 import { InMemoryRunRepository } from './persistence/memory/run-repository';
 import type { RunRepository } from './persistence/run-repository';
 import { FsArtifactStore } from './persistence/artifacts/fs/artifact-store';
+import { FsPromptStore } from './persistence/prompts/fs/prompt-store';
 import { JobQueue } from './jobs/queue';
 import { StubAuthService, type AuthService } from './auth/service';
 import { StubBillingService, type BillingService } from './billing/service';
@@ -30,7 +31,9 @@ export function buildContainer(config: Config): Container {
   const queue = new JobQueue(logger);
   const getScraper = createScraperResolver(config);
   const llm = createLlmClient(config.DEFAULT_LLM, config);
-  const artifacts = new FsArtifactStore(config.ARTIFACTS_DIR ?? join(process.cwd(), 'tmp'));
+  const artifactsDir = config.ARTIFACTS_DIR ?? join(process.cwd(), 'tmp');
+  const artifacts = new FsArtifactStore(artifactsDir);
+  const prompts = new FsPromptStore(artifactsDir);
 
   return {
     config,
@@ -40,6 +43,6 @@ export function buildContainer(config: Config): Container {
     auth: new StubAuthService(),
     billing: new StubBillingService(),
     getScraper,
-    ctx: { scraper: getScraper(), llm, logger, artifacts },
+    ctx: { scraper: getScraper(), llm, logger, artifacts, prompts },
   };
 }

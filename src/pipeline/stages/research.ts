@@ -3,6 +3,7 @@ import type { Listing } from '../../domain/listing';
 import type { SkuResearch } from '../../domain/research';
 import { parseJsonReply } from '../../llm/json';
 import { identityMessages, researchReplySchema } from '../../llm/prompts/research/identity';
+import { resolvePrompt } from '../../llm/prompts/registry';
 import type { PipelineContext } from '../context';
 
 /**
@@ -10,7 +11,8 @@ import type { PipelineContext } from '../context';
  * free-form notes + source URLs; persisted so re-bucketing (`tag`) is free.
  */
 export async function research(listing: Listing, ctx: PipelineContext): Promise<SkuResearch> {
-  const reply = await ctx.llm.complete({ messages: identityMessages(listing), web: true });
+  const prompt = await resolvePrompt('research', ctx.prompts);
+  const reply = await ctx.llm.complete({ messages: identityMessages(prompt.system, listing), web: true });
 
   const parsed = researchReplySchema.safeParse(parseJsonReply(reply.text));
   if (!parsed.success) {
@@ -22,6 +24,7 @@ export async function research(listing: Listing, ctx: PipelineContext): Promise<
     notes: parsed.data.notes,
     sources: reply.sources ?? [],
     researchedAt: new Date().toISOString(),
+    promptVersion: prompt.version,
   };
 
   await ctx.artifacts.saveResearch(listing.ref, research);

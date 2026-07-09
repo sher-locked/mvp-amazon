@@ -2,8 +2,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Config } from '../config';
 import { AppError } from '../lib/errors';
 
-/** Routes reachable without a key: the UI page, its assets, and health. */
-const PUBLIC_PATHS = new Set(['/', '/index.html', '/favicon.ico', '/health']);
+/** Routes reachable without a key: the UI pages, their assets, and health. */
+const PUBLIC_PATHS = new Set(['/', '/index.html', '/prompts.html', '/favicon.ico', '/health']);
 
 function presentedKey(req: FastifyRequest): string | undefined {
   const header = req.headers['x-access-key'];

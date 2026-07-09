@@ -19,4 +19,6 @@ export interface GeneratedListing {
   bullets: GeneratedBullets;
   description: GeneratedField;
   generatedAt: string;
+  /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
+  promptVersion?: string;
 }

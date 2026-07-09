@@ -8,6 +8,7 @@ import {
   tagsReplySchema,
   toTagSet,
 } from '../../llm/prompts/research/tags';
+import { resolvePrompt } from '../../llm/prompts/registry';
 import type { PipelineContext } from '../context';
 
 const SCOPE_RANK: Record<TagScope, number> = { brand: 0, category: 1, family: 2, sku: 3 };
@@ -36,8 +37,9 @@ export async function tag(
   research: SkuResearch,
   ctx: PipelineContext,
 ): Promise<TagSet> {
+  const prompt = await resolvePrompt('tag', ctx.prompts);
   const reply = await ctx.llm.complete({
-    messages: tagsMessages(listing, research),
+    messages: tagsMessages(prompt.system, listing, research),
     schema: TAG_SET_JSON_SCHEMA,
   });
 
@@ -48,6 +50,7 @@ export async function tag(
 
   const tagSet = toTagSet(parsed.data);
   tagSet.tags = dedupeAcrossScopes(tagSet.tags);
+  tagSet.promptVersion = prompt.version;
 
   await ctx.artifacts.saveTags(listing.ref, tagSet);
   ctx.logger.info(

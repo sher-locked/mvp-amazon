@@ -12,6 +12,7 @@ import {
   listingReplySchema,
   type ListingReply,
 } from '../../llm/prompts/generate/listing';
+import { resolvePrompt } from '../../llm/prompts/registry';
 import type { PipelineContext } from '../context';
 
 const TITLE_MAX = 75;
@@ -114,8 +115,9 @@ export async function generate(
   tags: TagSet,
   ctx: PipelineContext,
 ): Promise<GeneratedListing> {
+  const prompt = await resolvePrompt('generate', ctx.prompts);
   const input = renderGenerationInput(listing, tags);
-  const base = listingMessages(input);
+  const base = listingMessages(prompt.system, input);
 
   let messages: LlmMessage[] = base;
   let value: ListingReply | undefined;
@@ -143,7 +145,7 @@ export async function generate(
     );
   }
 
-  const result = toGenerated(value);
+  const result = { ...toGenerated(value), promptVersion: prompt.version };
 
   await ctx.artifacts.saveGenerated(listing.ref, result);
   ctx.logger.info(

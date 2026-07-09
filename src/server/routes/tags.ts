@@ -33,6 +33,8 @@ export function registerTagsRoutes(app: FastifyInstance, c: Container): void {
       identity: tagSet.identity,
       tags: tagSet.tags,
       source: stored ? 'stored' : 'researched',
+      promptVersion: tagSet.promptVersion ?? null,
+      researchPromptVersion: skuResearch.promptVersion ?? null,
       ...(include === 'matrix' ? { matrix: renderTagMatrix(tagSet) } : {}),
     });
   });
@@ -48,11 +50,14 @@ export function registerTagsRoutes(app: FastifyInstance, c: Container): void {
         `no stored tags for ${ref.marketplace}_${ref.asin}; run POST /tags first`,
       );
     }
+    const storedResearch = await c.ctx.artifacts.loadResearch(ref);
 
     return reply.send({
       ref,
       identity: tagSet.identity,
       tags: tagSet.tags,
+      promptVersion: tagSet.promptVersion ?? null,
+      researchPromptVersion: storedResearch?.promptVersion ?? null,
       ...(include === 'matrix' ? { matrix: renderTagMatrix(tagSet) } : {}),
     });
   });

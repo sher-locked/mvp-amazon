@@ -37,10 +37,14 @@ export interface SkuResearch {
   notes: string;
   sources: string[];
   researchedAt: string;
+  /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
+  promptVersion?: string;
 }
 
 /** Output of the bucketing call (call 2) — what downstream stages consume. */
 export interface TagSet {
   identity: Identity;
   tags: Tag[];
+  /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
+  promptVersion?: string;
 }

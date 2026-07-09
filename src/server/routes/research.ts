@@ -22,6 +22,7 @@ export function registerResearchRoutes(app: FastifyInstance, c: Container): void
       identity: result.identity,
       notes: result.notes,
       sources: result.sources,
+      promptVersion: result.promptVersion ?? null,
     });
   });
 }

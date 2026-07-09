@@ -120,7 +120,8 @@ export function toTagSet(reply: TagsReply): TagSet {
   return { identity, tags: reply.tags };
 }
 
-const SYSTEM = `You are a product-content analyst. Given scraped Amazon PDP evidence plus prior research (identity + notes), produce the product's exhaustive tag set. Every tag sits on two axes: scope and type.
+/** Default editable instructions for the bucketing call (slot `tag`). */
+export const TAGS_SYSTEM_DEFAULT = `You are a product-content analyst. Given scraped Amazon PDP evidence plus prior research (identity + notes), produce the product's exhaustive tag set. Every tag sits on two axes: scope and type.
 
 ## Types
 
@@ -154,14 +155,14 @@ Never repeat the same tag value at two scopes.
 Be exhaustive: aim to cover all six types where evidence supports them, across all four scopes. Keep tag values short, lowercase, and atomic (one claim per tag). Carry over the identity you are given, correcting it only if the evidence plainly contradicts it.`;
 
 /** Call 2: bucket evidence + research into the flat scope-x-type tag set. */
-export function tagsMessages(listing: Listing, research: SkuResearch): LlmMessage[] {
+export function tagsMessages(system: string, listing: Listing, research: SkuResearch): LlmMessage[] {
   const user = [
     `Scraped Amazon PDP evidence:\n\n${renderEvidence(listing)}`,
     `Resolved identity:\n${JSON.stringify(research.identity, null, 2)}`,
     `Research notes:\n${research.notes}`,
   ].join('\n\n---\n\n');
   return [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: system },
     { role: 'user', content: user },
   ];
 }

@@ -14,6 +14,7 @@ import { registerResearchRoutes } from './routes/research';
 import { registerTagsRoutes } from './routes/tags';
 import { registerEvaluateRoutes } from './routes/evaluate';
 import { registerGenerateRoutes } from './routes/generate';
+import { registerPromptRoutes } from './routes/prompts';
 
 export function buildApp(c: Container): FastifyInstance {
   const pretty = c.config.NODE_ENV !== 'production';
@@ -47,6 +48,7 @@ export function buildApp(c: Container): FastifyInstance {
   registerTagsRoutes(app, c);
   registerEvaluateRoutes(app, c);
   registerGenerateRoutes(app, c);
+  registerPromptRoutes(app, c);
 
   // orchestrated pipeline (async)
   registerRunRoutes(app, c);

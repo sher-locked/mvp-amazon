@@ -29,7 +29,7 @@ Each step takes typed input, returns typed output, and never reaches into anothe
 - **Individually** — synchronous endpoints (`/scrape`, `/parse`, `/research`, `/tags`, `/evaluate/*`, `/generate`) for de-risking and reuse.
 - **Together** — the async pipeline via `pipeline/orchestrator.ts`, which owns sequencing and run status (`/runs`).
 
-A static dark-mode eval UI (`public/index.html`, served by `@fastify/static`) fronts `/parse`, `/tags`, `/generate` for teammates. When `ACCESS_KEY` is set, `server/access-guard.ts` requires `x-access-key` on every route except the UI page and `/health`; unset disables the guard (local dev). Artifact store base dir is `ARTIFACTS_DIR` (default `<cwd>/tmp`; a Railway volume in prod — see `docs/deploy.md`).
+A static dark-mode eval UI (`public/index.html`, served by `@fastify/static`) fronts `/parse`, `/tags`, `/generate` for teammates. The three LLM system prompts are teammate-editable via `public/prompts.html` + `GET/PUT/DELETE /prompts` — defaults live in the prompt files, `llm/prompts/registry.ts` resolves override-else-default per call, overrides are global + versioned under `tmp/prompts/`, and every research/tags/generate artifact records the `promptVersion` that made it. Only the system prompt is editable: user-message wiring, output schemas, char limits, and research's appended `## Output` contract stay in code. When `ACCESS_KEY` is set, `server/access-guard.ts` requires `x-access-key` on every route except the UI pages and `/health`; unset disables the guard (local dev). Artifact store base dir is `ARTIFACTS_DIR` (default `<cwd>/tmp`; a Railway volume in prod — see `docs/deploy.md`).
 
 ## Architecture Principles
 

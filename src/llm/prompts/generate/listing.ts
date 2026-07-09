@@ -50,7 +50,8 @@ export const LISTING_JSON_SCHEMA = {
   } as Record<string, unknown>,
 };
 
-const SYSTEM = `You are generating a complete Amazon product listing under the rules effective 27 July 2026: a Title, an Item Highlights field, five About This Item bullets, and a Product Description.
+/** Default editable instructions for the single-shot generation call (slot `generate`). */
+export const LISTING_SYSTEM_DEFAULT = `You are generating a complete Amazon product listing under the rules effective 27 July 2026: a Title, an Item Highlights field, five About This Item bullets, and a Product Description.
 
 Generate in order: title, then itemHighlights, then bullets, then description. Later fields must not repeat the phrasing of earlier ones — each layer expands on the previous, it never restates it.
 
@@ -132,9 +133,9 @@ Return JSON:
   "description": { "text": ..., "rationale": which tags drove which part and anything dropped }
 }`;
 
-export function listingMessages(input: string): LlmMessage[] {
+export function listingMessages(system: string, input: string): LlmMessage[] {
   return [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: system },
     {
       role: 'user',
       content: `INPUT (one product object with identity, tags, and the current scraped listing):\n${input}`,

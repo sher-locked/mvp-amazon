@@ -31,14 +31,14 @@ Both paths call the same stage functions — no duplicated logic.
 | `pipeline/`        | `orchestrator` (sequences stages, owns run status) + `context` (provider handles). |
 | `scraping/`        | `Scraper` contract + factory + per-request resolver; `playwright/`, `brightdata/`, `amazon/` (PDP parser, block-detect, country map). |
 | `research/`        | Pure views over research output (`tag-matrix`); the research/tag LLM calls live in `pipeline/stages/` + `llm/prompts/research/`. |
-| `llm/`             | Provider-agnostic `LlmClient` + factory + `providers/` + `prompts/` (rubrics). |
+| `llm/`             | Provider-agnostic `LlmClient` + factory + `providers/` + `prompts/` (rubrics) + `prompts/registry.ts` (the three editable prompt slots + resolver). |
 | `discoverability/` | Rufus + LLM-search probes.                                            |
-| `persistence/`     | `RunRepository` contract + in-memory impl (DB later); `artifacts/` — versioned `ArtifactStore` (fs impl under `tmp/`). |
+| `persistence/`     | `RunRepository` contract + in-memory impl (DB later); `artifacts/` — versioned `ArtifactStore` (fs impl under `tmp/`); `prompts/` — global versioned `PromptStore` for prompt overrides. |
 | `jobs/`            | In-process job queue (durable queue later).                          |
 | `auth/`            | Company-email OTP (stub).                                             |
 | `billing/`         | Quota / unlock paywall (stub).                                        |
 | `server/`          | Fastify app, error handler, access guard, route registration, request schemas. |
-| `public/`          | Static eval UI: one self-contained dark-mode `index.html` (no build step), served via `@fastify/static`. |
+| `public/`          | Static eval UI: self-contained dark-mode pages (no build step) served via `@fastify/static` — `index.html` (run steps) + `prompts.html` (prompt editors). |
 | `container.ts`     | Composition root; wires everything once at startup.                  |
 | `spikes/`          | Throwaway de-risking experiments, promoted into `src/` once proven.   |
 
@@ -62,6 +62,10 @@ The research/tag split mirrors scrape/parse: `research` is the expensive web-ena
 
 `generate` turns the stored `TagSet` + `Listing` into the four post-July-2026 Amazon fields (Title ≤75, Item Highlights ≤125, five About This Item bullets <1,000 together, Description ≤2,000) via ONE single-shot no-web call on the fast model tier (`OPENAI_MODEL_FAST`, falls back to `OPENAI_MODEL`) — one combined prompt (`llm/prompts/generate/listing.ts`) generates all four fields in order with an in-prompt no-repetition rule. Hard limits and the mechanical compliance gates (drop inferred+complianceSensitive, drop confidence <0.6) are enforced in code; every limit violation is collected and fed back in a single corrective re-prompt that regenerates the whole document (then 502). Field rules: [amazon-generation-prompts.md](reference/amazon-generation-prompts.md).
 
+## Editable prompts (global, versioned)
+
+The three LLM system prompts (`research`, `tag`, `generate`) are editable by teammates. Defaults live in code (the prompt files); `llm/prompts/registry.ts` holds slot metadata and resolves the active prompt per call: stored override if present, else the default. Overrides are **global for everyone** and versioned under `tmp/prompts/<slot>/` (`PromptStore`, fs impl); revert deletes only the latest pointer, so history stays and the slot tracks the code default again. Only the system prompt is editable — the user-message assembly (evidence, notes, generation input) and all schema/limit enforcement stay in code. The research slot has no provider-enforced schema, so its `## Output` JSON contract is a code-owned block appended after the editable text. Every research/tags/generate artifact is stamped with `promptVersion` (`default#<hash8>` | `custom#<ISOts>`), surfaced in API responses and the UI; the run page shows a stale hint when a stored artifact's prompt differs from the active one (re-runs are always explicit — never automatic, research costs ~60–75 s).
+
 ## API routes
 
 Composable steps are synchronous; the orchestrated pipeline is async.
@@ -78,6 +82,9 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 | POST   | `/evaluate/llm-search`  | `{ listing, tags }` → `{ llmSearch }`                 |
 | POST   | `/generate`             | `{ input, refresh? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; always regenerates the full four-field document in one call) |
 | GET    | `/generate`             | `?input=url\|asin` → `{ ref, generated }` (pure read of the latest stored generation, no LLM; 404 if never generated) |
+| GET    | `/prompts`              | → `{ prompts: [{ id, title, constraints, defaultText, override, active, … }] }` (the three editable slots) |
+| PUT    | `/prompts/:id`          | `{ text, note? }` → `{ id, override, active }` (save a new global override version) |
+| DELETE | `/prompts/:id`          | → `{ id, active }` (revert to the code default; history kept) |
 | POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
 | GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
 | POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
@@ -100,6 +107,7 @@ When `ACCESS_KEY` is set, every route except `/`, `/index.html`, `/favicon.ico`,
 - `tmp/research/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`SkuResearch`).
 - `tmp/tags/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`TagSet`).
 - `tmp/generate/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`GeneratedListing` — always a complete four-field document).
+- `tmp/prompts/<slot>/<ISOts>.json` + `latest.json` pointer (global prompt overrides; revert removes only the pointer).
 
 `/parse` loads the latest raw HTML instead of re-scraping (BrightData requests cost money); `refetch: true` forces a fresh scrape. Likewise `/tags` loads the latest stored research instead of re-running the web-enabled LLM call; `refresh: true` forces new research.
 
