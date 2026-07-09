@@ -171,6 +171,9 @@
   ul.bullets { margin: 4px 0; padding-left: 20px; color: var(--text-soft); }
   ul.bullets li { margin-bottom: 5px; }
   .desc { white-space: pre-wrap; color: var(--text-soft); font-size: 14px; }
+  .desc .desc-head { font-weight: 650; color: var(--text); letter-spacing: -0.01em; margin: 14px 0 4px; }
+  .desc .desc-head:first-child { margin-top: 0; }
+  .desc .desc-line { margin: 0 0 8px; }
   details {
     margin-top: 10px;
     border: 1px solid var(--border-soft);
@@ -404,6 +407,15 @@ function markDone(n) {
 }
 
 // --- renderers ---------------------------------------------------------------
+function renderDesc(text) {
+  return String(text || '')
+    .split('\n')
+    .map((ln) => ln.startsWith('### ')
+      ? `<div class="desc-head">${esc(ln.slice(4))}</div>`
+      : `<div class="desc-line">${esc(ln)}</div>`)
+    .join('');
+}
+
 function renderListing(listing) {
   const imgs = [];
   if (listing.heroImage) imgs.push({ ...listing.heroImage, label: 'hero' });
@@ -411,7 +423,7 @@ function renderListing(listing) {
   const parts = [];
   parts.push(`<h3 class="field">Title</h3><div class="listing-title">${esc(listing.title)}</div>`);
   parts.push(`<h3 class="field">Bullets</h3><ul class="bullets">${(listing.bullets || []).map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`);
-  parts.push(`<h3 class="field">Description</h3><div class="desc">${esc(listing.description)}</div>`);
+  parts.push(`<h3 class="field">Description</h3><div class="desc">${renderDesc(listing.description)}</div>`);
   if (listing.aplusContent) {
     parts.push(`<details><summary>A+ content (${listing.aplusContent.length.toLocaleString()} chars)</summary><div class="desc">${esc(listing.aplusContent)}</div></details>`);
   }

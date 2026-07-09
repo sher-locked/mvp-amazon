@@ -95,6 +95,33 @@ function extractBullets($: CheerioAPI): string[] {
 }
 
 /**
+ * Some PDPs (grocery/beauty) nest an AUI expander inside `#productDescription`:
+ * an inline collapse <script>, a "See more" toggle label, and part of the copy
+ * sitting in a display:none `.a-expander-content` — all server-rendered, so
+ * nothing needs a click to be captured, but a blind `.text()` would inline the
+ * script source and toggle label. Strip that chrome, then mark block-element
+ * boundaries with a sentinel so headings/paragraphs come out as separate lines
+ * (`clean` would otherwise collapse source newlines and mash them together).
+ */
+const BLOCK_BREAK = '\uE000'; // private-use char: survives the HTML parser, never in product copy
+
+function extractDescription($: CheerioAPI): string {
+  const root = $('#productDescription').first();
+  if (!root.length) return '';
+  root.find('script, style, noscript, .a-expander-prompt').remove();
+  // sub-headings ("Ingredients", "Directions", …) keep a markdown marker so
+  // the UI and prompts can tell them apart from body lines
+  root.find('h1, h2, h3, h4, h5, h6').before(`${BLOCK_BREAK}### `);
+  root.find('h1, h2, h3, h4, h5, h6, p, li, br, div, tr').after(BLOCK_BREAK);
+  return root
+    .text()
+    .split(BLOCK_BREAK)
+    .map(clean)
+    .filter((line) => Boolean(line) && line !== '###')
+    .join('\n');
+}
+
+/**
  * A+ modules are marketing-designed HTML; pull the readable text (headings,
  * paragraphs, list items, image alt copy) as flat evidence. Amazon renders
  * duplicate `#aplus` ids — one per module block ("From the brand", "From the
@@ -132,7 +159,7 @@ export function parsePdp(ref: ListingRef, page: ScrapedPage): Listing {
   const title = clean($('#productTitle').first().text());
   const bullets = extractBullets($);
 
-  const description = clean($('#productDescription').first().text());
+  const description = extractDescription($);
   const aplusContent = extractAplus($);
 
   const imageBlock = extractImageBlock(page.html);
