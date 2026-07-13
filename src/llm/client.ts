@@ -1,3 +1,5 @@
+import type { LlmUsage } from '../domain/usage';
+
 export type LlmProvider = 'anthropic' | 'openai' | 'perplexity';
 
 export interface LlmMessage {
@@ -21,6 +23,8 @@ export interface LlmResponse {
   text: string;
   /** URLs consulted when web search was enabled, where the provider reports them */
   sources?: string[];
+  /** token usage where the provider reports it (approximate spend signal) */
+  usage?: LlmUsage;
   raw?: unknown;
 }
 

@@ -20,4 +20,8 @@ export interface Listing {
   aplusContent: string;
   heroImage: ListingImage | null;
   secondaryImages: ListingImage[];
+  /** chain provenance (absent on old artifacts) */
+  parsedAt?: string;
+  /** fetchedAt of the scrape this parse consumed */
+  sourceFetchedAt?: string;
 }

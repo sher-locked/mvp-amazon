@@ -51,6 +51,16 @@ function buildUrl(asin: string, market: Marketplace): string {
   return `https://www.amazon.${MARKET_TO_TLD[market]}/dp/${asin}`;
 }
 
+/** Rebuild a ListingRef from a stored-artifact dir name (`<MARKET>_<ASIN>`). */
+export function refFromArtifactId(id: string): ListingRef | null {
+  const m = /^([A-Z]{2})_([A-Z0-9]{10})$/.exec(id);
+  const market = m?.[1];
+  const asin = m?.[2];
+  if (!market || !asin || !(market in MARKET_TO_TLD)) return null;
+  const marketplace = market as Marketplace;
+  return { asin, marketplace, url: buildUrl(asin, marketplace) };
+}
+
 /** Resolve a raw url/asin into a normalized ListingRef. */
 export function ingest(input: string): ListingRef {
   const raw = input.trim();

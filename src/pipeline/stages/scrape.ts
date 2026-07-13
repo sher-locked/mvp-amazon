@@ -22,7 +22,9 @@ export async function scrape(
   opts: ScrapeStageOptions = {},
 ): Promise<ScrapeResult> {
   const country = opts.country ?? countryForMarketplace(ref.marketplace);
+  const started = Date.now();
   const page = await ctx.scraper.fetch(ref.url, { country });
+  const durationMs = Date.now() - started;
   const block = isBlocked(page.html);
 
   const meta: RawArtifactMeta = {
@@ -33,6 +35,7 @@ export async function scrape(
     fetchedAt: new Date().toISOString(),
     blocked: block.blocked,
     ...(block.marker ? { blockMarker: block.marker } : {}),
+    durationMs,
   };
 
   await ctx.artifacts.saveRaw(ref, page.html, meta);

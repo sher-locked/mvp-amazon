@@ -3,6 +3,7 @@ import { now } from '../../lib/result';
 import type { Listing } from '../../domain/listing';
 import type { TagSet } from '../../domain/research';
 import type { GeneratedListing } from '../../domain/generation';
+import type { LlmUsage } from '../../domain/usage';
 import type { LlmMessage } from '../../llm/client';
 import { parseJsonReply } from '../../llm/json';
 import { renderGenerationInput } from '../../llm/prompts/generate/input';
@@ -122,9 +123,20 @@ export async function generate(
   let messages: LlmMessage[] = base;
   let value: ListingReply | undefined;
   let violations: string[] = [];
+  let usage: LlmUsage | undefined;
+  const started = Date.now();
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const reply = await ctx.llm.complete({ messages, schema: LISTING_JSON_SCHEMA, tier: 'fast' });
+    if (reply.usage) {
+      usage = usage
+        ? {
+            model: reply.usage.model,
+            inputTokens: usage.inputTokens + reply.usage.inputTokens,
+            outputTokens: usage.outputTokens + reply.usage.outputTokens,
+          }
+        : reply.usage;
+    }
     value = parseReply(parseJsonReply(reply.text));
     violations = collectViolations(value);
     if (violations.length === 0) break;
@@ -145,7 +157,13 @@ export async function generate(
     );
   }
 
-  const result = { ...toGenerated(value), promptVersion: prompt.version };
+  const result: GeneratedListing = {
+    ...toGenerated(value),
+    promptVersion: prompt.version,
+    ...(tags.taggedAt ? { sourceTaggedAt: tags.taggedAt } : {}),
+    ...(usage ? { usage } : {}),
+    durationMs: Date.now() - started,
+  };
 
   await ctx.artifacts.saveGenerated(listing.ref, result);
   ctx.logger.info(

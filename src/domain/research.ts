@@ -1,3 +1,5 @@
+import type { LlmUsage } from './usage';
+
 export type TagType = 'fact' | 'functional' | 'sensory' | 'emotional' | 'occasion' | 'audience';
 
 /** Scope chain, highest first. A tag lives at the highest scope where it is true. */
@@ -39,6 +41,10 @@ export interface SkuResearch {
   researchedAt: string;
   /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
   promptVersion?: string;
+  /** parsedAt of the listing this research consumed (absent on old artifacts) */
+  sourceParsedAt?: string;
+  usage?: LlmUsage;
+  durationMs?: number;
 }
 
 /** Output of the bucketing call (call 2) — what downstream stages consume. */
@@ -47,4 +53,9 @@ export interface TagSet {
   tags: Tag[];
   /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
   promptVersion?: string;
+  taggedAt?: string;
+  /** researchedAt of the research this bucketing consumed (absent on old artifacts) */
+  sourceResearchedAt?: string;
+  usage?: LlmUsage;
+  durationMs?: number;
 }

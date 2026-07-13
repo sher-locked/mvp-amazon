@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Listing, ListingRef } from '../../../domain/listing';
 import type { SkuResearch, TagSet } from '../../../domain/research';
@@ -50,6 +50,18 @@ export class FsArtifactStore implements ArtifactStore {
       return { html, meta };
     } catch {
       return null;
+    }
+  }
+
+  async listScraped(): Promise<string[]> {
+    try {
+      const entries = await readdir(join(this.baseDir, 'scrape'), { withFileTypes: true });
+      return entries
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort();
+    } catch {
+      return [];
     }
   }
 

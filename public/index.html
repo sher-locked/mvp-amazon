@@ -4,259 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Listing Eval</title>
-<style>
-  :root {
-    --bg: #090b0f;
-    --bg-grad: radial-gradient(ellipse 80% 50% at 50% -20%, #1a2233 0%, transparent 70%);
-    --panel: #11151c;
-    --panel-2: #181d27;
-    --border: #252d3a;
-    --border-soft: #1c2330;
-    --text: #e8ecf3;
-    --text-soft: #b4bcc9;
-    --muted: #6e7a8c;
-    --accent: #7eb8ff;
-    --accent-dim: #3d6a9e;
-    --good: #5dd39e;
-    --warn: #e8c468;
-    --bad: #f07070;
-    --chip: #1e2532;
-    --step-done: #2a3d32;
-    --step-done-border: #3d5c48;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    background-image: var(--bg-grad);
-    color: var(--text);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    font-feature-settings: "kern" 1, "liga" 1;
-    -webkit-font-smoothing: antialiased;
-  }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 28px;
-    border-bottom: 1px solid var(--border-soft);
-    background: rgba(17, 21, 28, 0.85);
-    backdrop-filter: blur(8px);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  header h1 {
-    font-size: 16px;
-    margin: 0;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  header .spacer { flex: 1; }
-  .head-nav a {
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    border: 1px solid var(--border);
-    padding: 5px 12px;
-    border-radius: 8px;
-    transition: border-color 0.15s;
-  }
-  .head-nav a:hover { border-color: var(--accent-dim); }
-  label.key-label { color: var(--muted); font-size: 12px; font-weight: 500; }
-  input[type="text"], input[type="password"] {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  input[type="text"]:focus, input[type="password"]:focus {
-    border-color: var(--accent-dim);
-    box-shadow: 0 0 0 3px rgba(126, 184, 255, 0.1);
-  }
-  main { max-width: 960px; margin: 0 auto; padding: 28px 28px 100px; }
-  .url-block { margin-bottom: 36px; }
-  .url-block input[type="text"] {
-    width: 100%;
-    font-size: 15px;
-    padding: 12px 14px;
-    border-radius: 10px;
-  }
-  .url-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.4; }
-
-  /* step cards */
-  .step {
-    background: var(--panel);
-    border: 1px solid var(--border-soft);
-    border-radius: 14px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    transition: border-color 0.2s, opacity 0.2s;
-  }
-  .step.locked { opacity: 0.45; pointer-events: none; }
-  .step.done { border-color: var(--step-done-border); }
-  .step-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border-soft);
-  }
-  .step-num {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 650;
-    color: var(--muted);
-    flex-shrink: 0;
-  }
-  .step.done .step-num {
-    background: var(--step-done);
-    border-color: var(--step-done-border);
-    color: var(--good);
-  }
-  .step.running .step-num { color: var(--accent); border-color: var(--accent-dim); }
-  .step-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-  .step-meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
-  .step-body { padding: 20px; overflow-x: auto; }
-  .step-body.empty { color: var(--muted); font-size: 13px; }
-  .step-foot {
-    padding: 0 20px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .step-foot.hidden { display: none; }
-
-  button.step-btn {
-    background: linear-gradient(180deg, #1e2a3d 0%, #182030 100%);
-    border: 1px solid var(--accent-dim);
-    color: var(--accent);
-    border-radius: 8px;
-    padding: 9px 18px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-  }
-  button.step-btn:hover:not(:disabled) {
-    background: linear-gradient(180deg, #243348 0%, #1c2a3c 100%);
-    border-color: var(--accent);
-  }
-  button.step-btn:disabled { opacity: 0.55; cursor: wait; }
-  button.step-btn .timer { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
-  button.step-btn.secondary {
-    background: var(--panel-2);
-    border-color: var(--border);
-    color: var(--text-soft);
-  }
-  button.step-btn.secondary:hover:not(:disabled) { border-color: var(--accent-dim); color: var(--accent); }
-  button.step-btn.hidden { display: none; }
-  .stale { color: var(--warn); font-size: 11px; white-space: nowrap; }
-
-  .error {
-    background: #1f1418;
-    border: 1px solid #4a2a30;
-    color: #f0b0ad;
-    border-radius: 8px;
-    padding: 12px 14px;
-    white-space: pre-wrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-  }
-  h3.field {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    margin: 20px 0 8px;
-    font-weight: 600;
-  }
-  h3.field:first-child { margin-top: 0; }
-  .listing-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; color: var(--text); }
-  ul.bullets { margin: 4px 0; padding-left: 20px; color: var(--text-soft); }
-  ul.bullets li { margin-bottom: 5px; }
-  .desc { white-space: pre-wrap; color: var(--text-soft); font-size: 14px; }
-  .desc .desc-head { font-weight: 650; color: var(--text); letter-spacing: -0.01em; margin: 14px 0 4px; }
-  .desc .desc-head:first-child { margin-top: 0; }
-  .desc .desc-line { margin: 0 0 8px; }
-  details {
-    margin-top: 10px;
-    border: 1px solid var(--border-soft);
-    border-radius: 8px;
-    padding: 8px 14px;
-    background: var(--panel-2);
-  }
-  details summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 500; }
-  details .desc { font-size: 13px; margin-top: 8px; }
-  .thumbs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
-  .thumbs figure { margin: 0; text-align: center; }
-  .thumbs img {
-    height: 108px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: #fff;
-    object-fit: contain;
-  }
-  .thumbs figcaption { font-size: 10px; color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
-  table.matrix { border-collapse: collapse; width: 100%; font-size: 12px; }
-  table.matrix th, table.matrix td {
-    border: 1px solid var(--border-soft);
-    padding: 9px 10px;
-    vertical-align: top;
-    text-align: left;
-  }
-  table.matrix th { background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-  table.matrix td.scope { background: var(--panel-2); color: var(--text-soft); font-weight: 600; white-space: nowrap; }
-  table.matrix td.none { color: var(--border); text-align: center; }
-  .chip {
-    display: inline-block;
-    background: var(--chip);
-    border: 1px solid var(--border-soft);
-    border-radius: 14px;
-    padding: 3px 10px;
-    margin: 2px 4px 2px 0;
-    font-size: 12px;
-    color: var(--text-soft);
-    cursor: default;
-  }
-  .chip .inf { color: var(--warn); font-weight: 700; margin-left: 2px; }
-  .chip .comp { color: var(--bad); font-weight: 700; margin-left: 2px; }
-  .legend { color: var(--muted); font-size: 11px; margin-top: 12px; }
-  .identity { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-  .identity b { color: var(--text); font-weight: 600; }
-  .meter {
-    display: inline-block;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11px;
-    padding: 2px 9px;
-    border-radius: 12px;
-    margin-left: 8px;
-    background: var(--chip);
-    border: 1px solid var(--border-soft);
-    vertical-align: middle;
-    font-weight: 500;
-  }
-  .meter.ok { color: var(--good); border-color: #2d4a3a; }
-  .meter.under { color: var(--warn); border-color: #4a4028; }
-  .meter.over { color: var(--bad); border-color: #4a2a2a; }
-  ol.gen-bullets { margin: 4px 0; padding-left: 20px; color: var(--text-soft); }
-  ol.gen-bullets li { margin-bottom: 8px; line-height: 1.45; }
-  .bullet-count { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 11px; margin-left: 6px; }
-</style>
+<link rel="stylesheet" href="/shared.css" />
 </head>
 <body>
 <header>
@@ -269,86 +17,112 @@
 
 <main>
   <div class="url-block">
-    <input type="text" id="listing-input" placeholder="Amazon product URL or ASIN" />
-    <div class="url-hint">Full marketplace URL preferred — e.g. https://www.amazon.co.uk/dp/B0C4BG7R2L. A bare ASIN defaults to amazon.com.</div>
+    <input type="text" id="listing-input" list="known-listings" placeholder="Amazon product URL or ASIN" />
+    <datalist id="known-listings"></datalist>
+    <div class="url-hint">Full marketplace URL preferred — e.g. https://www.amazon.co.uk/dp/B0C4BG7R2L. A bare ASIN defaults to amazon.com. Already-scraped listings appear as suggestions.</div>
   </div>
 
-  <article class="step" id="step-1">
+  <article class="step" id="card-scrape">
     <div class="step-head">
       <span class="step-num">1</span>
-      <span class="step-title">Scrape listing</span>
-      <span class="step-meta" id="meta-1"></span>
+      <span class="step-title">Scrape PDP</span>
+      <span class="cost-chip" id="cost-scrape"></span>
+      <span class="stale head-right" id="stale-scrape"></span>
+      <span class="step-meta row" id="meta-scrape"></span>
     </div>
-    <div class="step-body empty" id="out-1">Parsed listing will appear here.</div>
-    <div class="step-foot" id="foot-1">
-      <button class="step-btn" id="btn-1">Scrape listing</button>
+    <div class="step-body empty" id="out-scrape"></div>
+    <div class="step-foot">
+      <button class="step-btn" id="btn-scrape">Scrape (1 BrightData request)</button>
     </div>
   </article>
 
-  <article class="step locked" id="step-2">
+  <article class="step" id="card-parse">
     <div class="step-head">
       <span class="step-num">2</span>
-      <span class="step-title">Research &amp; tag</span>
-      <span class="stale" id="stale-2"></span>
-      <span class="step-meta" id="meta-2"></span>
+      <span class="step-title">Parse listing</span>
+      <span class="cost-chip" id="cost-parse"></span>
+      <span class="stale head-right" id="stale-parse"></span>
+      <span class="step-meta row" id="meta-parse"></span>
     </div>
-    <div class="step-body empty" id="out-2">Tag matrix will appear here.</div>
-    <div class="step-foot hidden" id="foot-2">
-      <button class="step-btn" id="btn-2">Research &amp; tag</button>
-      <button class="step-btn secondary hidden" id="btn-2b" title="Forces fresh web research (~1 min) before re-tagging">Re-run research + tag</button>
+    <div class="step-body empty" id="out-parse"></div>
+    <div class="step-foot">
+      <button class="step-btn" id="btn-parse">Parse stored HTML</button>
     </div>
   </article>
 
-  <article class="step locked" id="step-3">
+  <article class="step" id="card-research">
     <div class="step-head">
       <span class="step-num">3</span>
-      <span class="step-title">Generate listing</span>
-      <span class="stale" id="stale-3"></span>
-      <span class="step-meta" id="meta-3"></span>
+      <span class="step-title">Research SKU</span>
+      <span class="cost-chip" id="cost-research"></span>
+      <span class="stale head-right" id="stale-research"></span>
+      <span class="step-meta row" id="meta-research"></span>
     </div>
-    <div class="step-body empty" id="out-3">Generated fields will appear here.</div>
-    <div class="step-foot hidden" id="foot-3">
-      <button class="step-btn" id="btn-3">Generate listing</button>
+    <div class="step-body empty" id="out-research"></div>
+    <div class="step-foot">
+      <button class="step-btn" id="btn-research">Run research (~1 min, web LLM)</button>
     </div>
   </article>
+
+  <article class="step" id="card-tag">
+    <div class="step-head">
+      <span class="step-num">4</span>
+      <span class="step-title">Bucket tags</span>
+      <span class="cost-chip" id="cost-tag"></span>
+      <span class="stale head-right" id="stale-tag"></span>
+      <span class="step-meta row" id="meta-tag"></span>
+    </div>
+    <div class="step-body empty" id="out-tag"></div>
+    <div class="step-foot">
+      <button class="step-btn" id="btn-tag">Bucket tags (uses stored research)</button>
+    </div>
+  </article>
+
+  <article class="step" id="card-generate">
+    <div class="step-head">
+      <span class="step-num">5</span>
+      <span class="step-title">Generate listing</span>
+      <span class="cost-chip" id="cost-generate"></span>
+      <span class="stale head-right" id="stale-generate"></span>
+      <span class="step-meta row" id="meta-generate"></span>
+    </div>
+    <div class="step-body empty" id="out-generate"></div>
+    <div class="step-foot">
+      <button class="step-btn" id="btn-generate">Generate listing (1–2 min)</button>
+    </div>
+  </article>
+
+  <div class="chain-strip" id="chain-strip" hidden></div>
 </main>
 
-<script>
-'use strict';
+<script type="module">
+import {
+  api, esc, estCost, fmtActuals, fmtBytes, fmtDur, fmtPrompt, fmtTime, fmtTokens, fmtUsd,
+  initHeader, isPromptStale, loadActivePrompts, renderGenerated, renderIdentity, renderListing,
+  renderResearch, renderTags, runAction, setBtnLabel, SCRAPE_COST, STEP_ESTIMATES,
+} from '/shared.js';
 
 const $ = (id) => document.getElementById(id);
+const refStr = (ref) => `${ref.marketplace}_${ref.asin}`;
 
-const state = { s1: false, s2: false, s3: false };
-let lastHydrated = '';
+// latest stored artifacts, hydrated via pure GETs — POSTs happen only on button clicks
+let store = { scrape: null, parse: null, research: null, tags: null, generated: null };
+let hydrateSeq = 0;
 
-// --- persistence -------------------------------------------------------------
-const keyInput = $('access-key');
-keyInput.value = localStorage.getItem('accessKey') || '';
-keyInput.addEventListener('input', () => localStorage.setItem('accessKey', keyInput.value));
+const EMPTY = {
+  scrape: 'No stored scrape. “Scrape” fetches the live Amazon page via BrightData — the one step that spends a scraping request.',
+  parse: 'No stored parse. “Parse” turns the stored raw HTML into a structured listing — free and local, no scraping.',
+  research: 'No stored research. “Run research” resolves the SKU identity tuple and writes research notes via a web-enabled LLM (~1 min, real cost).',
+  tag: 'No stored tags. “Bucket tags” sorts PDP evidence + research notes into the scope × type matrix (cheap structured-output call).',
+  generate: 'No stored generation. “Generate listing” writes the four post-July-2026 fields from the stored tags in one fast-tier call.',
+};
+
+initHeader().addEventListener('change', () => hydrate());
 
 const inputBox = $('listing-input');
 inputBox.value = localStorage.getItem('lastInput') || '';
 inputBox.addEventListener('input', () => localStorage.setItem('lastInput', inputBox.value));
-inputBox.addEventListener('change', () => {
-  localStorage.setItem('lastInput', inputBox.value);
-  const v = inputBox.value.trim();
-  if (v !== lastHydrated) {
-    resetFlow();
-    if (v) hydrate();
-  }
-});
-
-// --- fetch -------------------------------------------------------------------
-async function api(method, path, body) {
-  const headers = { 'x-access-key': keyInput.value };
-  if (body) headers['content-type'] = 'application/json';
-  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { error: 'NON_JSON', message: text.slice(0, 500) }; }
-  if (!res.ok) throw Object.assign(new Error('api error'), { status: res.status, payload: json });
-  return json;
-}
+inputBox.addEventListener('change', () => hydrate());
 
 function requireInput() {
   const v = inputBox.value.trim();
@@ -359,289 +133,282 @@ function requireInput() {
   return v;
 }
 
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-}
-
-function showError(outId, err) {
+function showError(key, err) {
   const payload = err.payload || { error: 'NETWORK', message: String(err) };
   const head = err.status ? `HTTP ${err.status}` : 'Error';
-  $(outId).innerHTML = `<div class="error">${esc(head)}\n${esc(JSON.stringify(payload, null, 2))}</div>`;
+  const out = $('out-' + key);
+  out.classList.remove('empty');
+  out.innerHTML = `<div class="error">${esc(head)}\n${esc(JSON.stringify(payload, null, 2))}</div>`;
 }
 
-// --- prompt provenance ---------------------------------------------------------
-let activePrompts = null; // slot id → active version, from GET /prompts
-
-async function loadActivePrompts() {
-  try {
-    const res = await api('GET', '/prompts');
-    activePrompts = Object.fromEntries(res.prompts.map((p) => [p.id, p.active.version]));
-  } catch { activePrompts = null; }
-}
-
-function fmtPrompt(v) {
-  if (!v) return '';
-  if (v.startsWith('default#')) return 'default prompt';
-  if (v.startsWith('custom#')) {
-    const d = new Date(v.slice('custom#'.length));
-    return 'custom prompt · ' + d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-  return v;
-}
-
-const isStale = (artifactVersion, slot) =>
-  Boolean(artifactVersion && activePrompts && activePrompts[slot] && artifactVersion !== activePrompts[slot]);
-
-function setStale(n, stale) {
-  $('stale-' + n).textContent = stale ? 'prompt changed — re-run to apply' : '';
-}
-
-// --- step UI helpers ---------------------------------------------------------
-function setStep(n, { status, meta, html, showBtn }) {
-  const el = $('step-' + n);
-  const out = $('out-' + n);
-  const foot = $('foot-' + n);
-  el.classList.remove('locked', 'done', 'running');
-  if (status === 'locked') el.classList.add('locked');
-  if (status === 'done') el.classList.add('done');
-  if (status === 'running') el.classList.add('running');
-  if (meta !== undefined) $('meta-' + n).textContent = meta;
-  if (html !== undefined) {
-    out.innerHTML = html;
-    out.classList.toggle('empty', !html);
-  }
-  if (showBtn !== undefined) foot.classList.toggle('hidden', !showBtn);
-}
-
-function unlockNext(n) {
-  if (n <= 2 && state['s' + n] && !state['s' + (n + 1)]) {
-    setStep(n + 1, { status: 'idle', showBtn: true });
+// --- card plumbing -------------------------------------------------------------
+function setCard(key, { done, meta, stale, bodyHtml, emptyText }) {
+  $('card-' + key).classList.toggle('done', !!done);
+  $('card-' + key).classList.remove('running');
+  $('meta-' + key).textContent = meta || '';
+  $('stale-' + key).textContent = stale?.length ? `${stale.join(' · ')} — re-run to apply` : '';
+  const out = $('out-' + key);
+  if (bodyHtml) {
+    const open = [...out.querySelectorAll('details')].map((d) => d.open);
+    out.innerHTML = bodyHtml;
+    [...out.querySelectorAll('details')].forEach((d, i) => { if (open[i]) d.open = true; });
+    out.classList.remove('empty');
+  } else {
+    out.textContent = emptyText;
+    out.classList.add('empty');
   }
 }
 
-function resetFlow() {
-  lastHydrated = '';
-  state.s1 = state.s2 = state.s3 = false;
-  setStep(1, { status: 'idle', meta: '', html: '', showBtn: true });
-  $('out-1').classList.add('empty');
-  $('out-1').textContent = 'Parsed listing will appear here.';
-  setStep(2, { status: 'locked', meta: '', html: '', showBtn: false });
-  $('out-2').classList.add('empty');
-  $('out-2').textContent = 'Tag matrix will appear here.';
-  setStep(3, { status: 'locked', meta: '', html: '', showBtn: false });
-  $('out-3').classList.add('empty');
-  $('out-3').textContent = 'Generated fields will appear here.';
-  setBtnLabel('btn-2', 'Research & tag');
-  setBtnLabel('btn-3', 'Generate listing');
-  $('btn-2b').classList.add('hidden');
-  setStale(2, false);
-  setStale(3, false);
+function setCost(key, actuals, extra) {
+  const a = fmtActuals(actuals || {});
+  $('cost-' + key).innerHTML =
+    esc(STEP_ESTIMATES[key]) + (a ? ` · <span class="actual">${esc(a + (extra || ''))}</span>` : '');
 }
 
-async function runAction(button, fn) {
-  const original = button.textContent;
-  const start = Date.now();
-  button.disabled = true;
-  const tick = setInterval(() => {
-    const s = Math.floor((Date.now() - start) / 1000);
-    button.innerHTML = `${original} <span class="timer">${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</span>`;
-  }, 1000);
-  try { await fn(); }
-  finally {
-    clearInterval(tick);
-    button.textContent = button.dataset.label || original;
-    button.disabled = false;
+function setBtn(key, label, secondary) {
+  const btn = $('btn-' + key);
+  setBtnLabel(btn, label);
+  btn.classList.toggle('secondary', !!secondary);
+}
+
+const rawJson = (obj) =>
+  `<details class="box"><summary>raw JSON</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
+
+// --- card renderers --------------------------------------------------------------
+function renderScrapeCard() {
+  const s = store.scrape;
+  if (!s) {
+    setCard('scrape', { emptyText: EMPTY.scrape });
+    setCost('scrape');
+    setBtn('scrape', 'Scrape (1 BrightData request)', false);
+    return;
   }
-}
-
-function setBtnLabel(id, label) {
-  const b = $(id);
-  b.dataset.label = label;
-  if (!b.disabled) b.textContent = label;
-}
-
-// steps 2 & 3 keep their buttons after completion so edited prompts can be re-applied
-function markDone(n) {
-  state['s' + n] = true;
-  setStep(n, { status: 'done', showBtn: n !== 1 });
-  if (n === 2) {
-    setBtnLabel('btn-2', 'Re-run tag (reuses research)');
-    $('btn-2b').classList.remove('hidden');
-  }
-  if (n === 3) setBtnLabel('btn-3', 'Re-run generate');
-  unlockNext(n);
-}
-
-// --- renderers ---------------------------------------------------------------
-function renderDesc(text) {
-  return String(text || '')
-    .split('\n')
-    .map((ln) => ln.startsWith('### ')
-      ? `<div class="desc-head">${esc(ln.slice(4))}</div>`
-      : `<div class="desc-line">${esc(ln)}</div>`)
-    .join('');
-}
-
-function renderListing(listing) {
-  const imgs = [];
-  if (listing.heroImage) imgs.push({ ...listing.heroImage, label: 'hero' });
-  for (const im of listing.secondaryImages || []) imgs.push({ ...im, label: '' });
-  const parts = [];
-  parts.push(`<h3 class="field">Title</h3><div class="listing-title">${esc(listing.title)}</div>`);
-  parts.push(`<h3 class="field">Bullets</h3><ul class="bullets">${(listing.bullets || []).map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`);
-  parts.push(`<h3 class="field">Description</h3><div class="desc">${renderDesc(listing.description)}</div>`);
-  if (listing.aplusContent) {
-    parts.push(`<details><summary>A+ content (${listing.aplusContent.length.toLocaleString()} chars)</summary><div class="desc">${esc(listing.aplusContent)}</div></details>`);
-  }
-  if (imgs.length) {
-    parts.push(`<h3 class="field">Images</h3><div class="thumbs">${imgs.map((im) =>
-      `<figure><img src="${esc(im.url)}" alt="${esc(im.alt || '')}" loading="lazy" /><figcaption>${esc(im.label || im.alt || '')}</figcaption></figure>`).join('')}</div>`);
-  }
-  return parts.join('');
-}
-
-const SCOPES = ['brand', 'category', 'family', 'sku'];
-const TYPES = ['fact', 'functional', 'sensory', 'emotional', 'occasion', 'audience'];
-
-function chip(t) {
-  const tip = `confidence ${t.confidence}${t.evidence ? ' — ' + t.evidence : ''}`;
-  return `<span class="chip" title="${esc(tip)}">${esc(t.value)}${t.source === 'inferred' ? '<span class="inf" title="inferred">*</span>' : ''}${t.complianceSensitive ? '<span class="comp" title="compliance-sensitive">!</span>' : ''}</span>`;
-}
-
-function renderTags(identity, tags) {
-  const id = identity
-    ? `<div class="identity"><b>${esc(identity.displayName)}</b> — ${esc(identity.brand?.name || '')} · ${esc(identity.category || '')}</div>`
-    : '';
-  const head = `<tr><th>scope</th>${TYPES.map((t) => `<th>${t}</th>`).join('')}</tr>`;
-  const rows = SCOPES.map((scope) => {
-    const cells = TYPES.map((type) => {
-      const cell = (tags || []).filter((t) => t.scope === scope && t.type === type);
-      return cell.length ? `<td>${cell.map(chip).join('')}</td>` : `<td class="none">—</td>`;
-    });
-    return `<tr><td class="scope">${scope}</td>${cells.join('')}</tr>`;
-  }).join('');
-  const legend = `<div class="legend"><span class="inf" style="color:var(--warn)">*</span> inferred · <span style="color:var(--bad)">!</span> compliance-sensitive · hover for confidence</div>`;
-  return `${id}<table class="matrix">${head}${rows}</table>${legend}`;
-}
-
-function meter(chars, hard, targetLow) {
-  const cls = chars > hard ? 'over' : chars >= targetLow ? 'ok' : 'under';
-  return `<span class="meter ${cls}">${chars} / ${hard}</span>`;
-}
-
-function renderGenerated(g) {
-  const parts = [];
-  parts.push(`<h3 class="field">Title ${meter(g.title.chars, 75, 70)}</h3><div class="listing-title">${esc(g.title.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.title.rationale)}</div></details>`);
-  parts.push(`<h3 class="field">Item highlights ${meter(g.itemHighlights.chars, 125, 118)}</h3><div>${esc(g.itemHighlights.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.itemHighlights.rationale)}</div></details>`);
-  parts.push(`<h3 class="field">Bullets ${meter(g.bullets.chars, 1000, 900)}</h3><ol class="gen-bullets">${g.bullets.items.map((b) => `<li>${esc(b)}<span class="bullet-count">${b.length}</span></li>`).join('')}</ol><details><summary>rationale</summary><div class="desc">${esc(g.bullets.rationale)}</div></details>`);
-  parts.push(`<h3 class="field">Description ${meter(g.description.chars, 2000, 1900)}</h3><div class="desc">${esc(g.description.text)}</div><details><summary>rationale</summary><div class="desc">${esc(g.description.rationale)}</div></details>`);
-  return parts.join('');
-}
-
-// --- step actions (POST reuses stored artifacts unless missing) --------------
-$('btn-1').addEventListener('click', () =>
-  runAction($('btn-1'), async () => {
-    try {
-      const input = requireInput();
-      setStep(1, { status: 'running', meta: 'running…' });
-      const res = await api('POST', '/parse', { input });
-      $('out-1').innerHTML = renderListing(res.listing);
-      $('out-1').classList.remove('empty');
-      $('meta-1').textContent = `${res.listing.ref.marketplace}_${res.listing.ref.asin} · ${res.source}`;
-      markDone(1);
-    } catch (e) {
-      setStep(1, { status: 'idle', meta: '' });
-      showError('out-1', e);
-    }
-  }));
-
-function showTags(res) {
-  $('out-2').innerHTML = renderTags(res.identity, res.tags);
-  $('out-2').classList.remove('empty');
-  const promptBit = fmtPrompt(res.promptVersion);
-  $('meta-2').textContent =
-    `${res.ref.marketplace}_${res.ref.asin} · ${res.tags.length} tags · ${res.source ?? 'stored'}` +
-    (promptBit ? ` · ${promptBit}` : '');
-  setStale(2, isStale(res.promptVersion, 'tag') || isStale(res.researchPromptVersion, 'research'));
-  markDone(2);
-}
-
-function showGenerated(res, sourceBit) {
-  $('out-3').innerHTML = renderGenerated(res.generated);
-  $('out-3').classList.remove('empty');
-  const promptBit = fmtPrompt(res.generated.promptVersion);
-  $('meta-3').textContent =
-    `${res.ref.marketplace}_${res.ref.asin} · ${sourceBit} · ${res.generated.generatedAt}` +
-    (promptBit ? ` · ${promptBit}` : '');
-  setStale(3, isStale(res.generated.promptVersion, 'generate'));
-  markDone(3);
-}
-
-const runTags = (button, refresh) => () =>
-  runAction(button, async () => {
-    try {
-      const input = requireInput();
-      setStep(2, {
-        status: 'running',
-        meta: refresh ? 'running… (fresh research, ~2–3 min)' : 'running… (up to ~3 min if research needed)',
-      });
-      const res = await api('POST', '/tags', refresh ? { input, refresh: true } : { input });
-      await loadActivePrompts();
-      showTags(res);
-    } catch (e) {
-      setStep(2, { status: 'idle', meta: '', showBtn: true });
-      showError('out-2', e);
-    }
+  const m = s.meta;
+  const key = localStorage.getItem('accessKey') || '';
+  const keyQ = key ? `&key=${encodeURIComponent(key)}` : '';
+  const scrapeBase = `/scrape?input=${encodeURIComponent(s.ref.url)}`;
+  const pageHref = `${scrapeBase}&view=html${keyQ}`;
+  const htmlHref = `${scrapeBase}&include=html${keyQ}`;
+  const chips = [
+    `<span class="chip">${esc(m.scraper)}</span>`,
+    `<span class="chip ${m.status >= 200 && m.status < 300 ? 'ok' : 'bad'}">HTTP ${esc(m.status)}</span>`,
+    m.blocked
+      ? `<span class="chip bad">blocked${m.blockMarker ? ' · ' + esc(m.blockMarker) : ''}</span>`
+      : `<span class="chip ok">not blocked</span>`,
+    m.country ? `<span class="chip">country ${esc(m.country)}</span>` : '',
+    m.bytes != null ? `<span class="chip">${esc(fmtBytes(m.bytes))}</span>` : '',
+    m.durationMs != null ? `<span class="chip">fetched in ${esc(fmtDur(m.durationMs))}</span>` : '',
+    `<a class="chip" href="${esc(pageHref)}" target="_blank" rel="noopener noreferrer">render page ↗</a>`,
+    `<a class="chip" href="${esc(htmlHref)}" target="_blank" rel="noopener noreferrer">raw HTML (JSON) ↗</a>`,
+  ].filter(Boolean).join('');
+  setCard('scrape', {
+    done: true,
+    meta: `${refStr(s.ref)} · fetched ${fmtTime(m.fetchedAt)}`,
+    bodyHtml: `<div class="prov-chips">${chips}</div>` + rawJson(s),
   });
+  setCost('scrape', { durationMs: m.durationMs }, SCRAPE_COST != null ? ` · ≈ ${fmtUsd(SCRAPE_COST)}` : '');
+  setBtn('scrape', 'Re-scrape (new BrightData request)', true);
+}
 
-$('btn-2').addEventListener('click', runTags($('btn-2'), false));
-$('btn-2b').addEventListener('click', runTags($('btn-2b'), true));
+function renderParseCard() {
+  const p = store.parse;
+  if (!p) {
+    setCard('parse', { emptyText: EMPTY.parse });
+    setCost('parse');
+    setBtn('parse', store.scrape ? 'Parse stored HTML' : 'Parse (no stored scrape — scrapes first · 1 BrightData request)', false);
+    return;
+  }
+  const l = p.listing;
+  // identity is RESEARCH output, never parsed from HTML — this header is a
+  // view join over the stored research; until then, raw title + pending note
+  const idHtml = store.research
+    ? renderIdentity(store.research.identity, 'identity · from research')
+    : `<div class="id-head"><div class="id-name">${esc(l.title)}</div><div class="id-pending">${esc(l.ref.marketplace)} · ${esc(l.ref.asin)} — identity pending research (step 3)</div></div>`;
+  const meta = [refStr(l.ref)];
+  if (l.parsedAt) meta.push(`parsed ${fmtTime(l.parsedAt)}`);
+  if (l.sourceFetchedAt) meta.push(`from scrape ${fmtTime(l.sourceFetchedAt)}`);
+  const stale = [];
+  if (l.sourceFetchedAt && store.scrape?.meta?.fetchedAt && l.sourceFetchedAt !== store.scrape.meta.fetchedAt) {
+    stale.push('made from an older scrape');
+  }
+  setCard('parse', { done: true, meta: meta.join(' · '), stale, bodyHtml: idHtml + renderListing(l) + rawJson(p) });
+  setCost('parse');
+  setBtn('parse', 'Re-parse stored HTML', true);
+}
 
-$('btn-3').addEventListener('click', () =>
-  runAction($('btn-3'), async () => {
-    try {
-      const input = requireInput();
-      setStep(3, { status: 'running', meta: 'running… (1–2 min)' });
-      const res = await api('POST', '/generate', { input });
-      await loadActivePrompts();
-      showGenerated(res, `tags ${res.source}`);
-    } catch (e) {
-      setStep(3, { status: 'idle', meta: '', showBtn: true });
-      showError('out-3', e);
-    }
-  }));
+function renderResearchCard() {
+  const r = store.research;
+  if (!r) {
+    setCard('research', { emptyText: EMPTY.research });
+    setCost('research');
+    setBtn('research', 'Run research (~1 min, web LLM)', false);
+    return;
+  }
+  const meta = [refStr(r.ref), `researched ${fmtTime(r.researchedAt)}`];
+  const pb = fmtPrompt(r.promptVersion);
+  if (pb) meta.push(pb);
+  const stale = [];
+  if (isPromptStale(r.promptVersion, 'research')) stale.push('prompt changed');
+  if (r.sourceParsedAt && store.parse?.listing?.parsedAt && r.sourceParsedAt !== store.parse.listing.parsedAt) {
+    stale.push('made from an older parse');
+  }
+  setCard('research', { done: true, meta: meta.join(' · '), stale, bodyHtml: renderResearch(r) + rawJson(r) });
+  setCost('research', r);
+  setBtn('research', 'Re-run research (~1 min, web LLM)', true);
+}
 
-// --- hydrate stored artifacts on load / when URL already set -----------------
+function renderTagCard() {
+  const t = store.tags;
+  if (!t) {
+    setCard('tag', { emptyText: EMPTY.tag });
+    setCost('tag');
+    setBtn('tag', store.research ? 'Bucket tags (uses stored research)' : 'Bucket tags (no stored research — runs it first · ~1 min extra)', false);
+    return;
+  }
+  const meta = [refStr(t.ref), `${t.tags.length} tags`];
+  if (t.taggedAt) meta.push(`tagged ${fmtTime(t.taggedAt)}`);
+  if (t.sourceResearchedAt) meta.push(`from research ${fmtTime(t.sourceResearchedAt)}`);
+  const pb = fmtPrompt(t.promptVersion);
+  if (pb) meta.push(pb);
+  const stale = [];
+  if (isPromptStale(t.promptVersion, 'tag')) stale.push('prompt changed');
+  if (isPromptStale(t.researchPromptVersion, 'research')) stale.push('research prompt changed');
+  if (t.sourceResearchedAt && store.research?.researchedAt && t.sourceResearchedAt !== store.research.researchedAt) {
+    stale.push('made from older research');
+  }
+  setCard('tag', { done: true, meta: meta.join(' · '), stale, bodyHtml: renderTags(t.identity, t.tags) + rawJson(t) });
+  setCost('tag', t);
+  setBtn('tag', 'Re-bucket tags (uses stored research)', true);
+}
+
+function renderGenerateCard() {
+  const res = store.generated;
+  if (!res) {
+    setCard('generate', { emptyText: EMPTY.generate });
+    setCost('generate');
+    setBtn('generate', store.tags ? 'Generate listing (1–2 min)' : 'Generate listing (no stored tags — runs research + tag first)', false);
+    return;
+  }
+  const g = res.generated;
+  const meta = [refStr(res.ref), `generated ${fmtTime(g.generatedAt)}`];
+  if (g.sourceTaggedAt) meta.push(`from tags ${fmtTime(g.sourceTaggedAt)}`);
+  const pb = fmtPrompt(g.promptVersion);
+  if (pb) meta.push(pb);
+  const stale = [];
+  if (isPromptStale(g.promptVersion, 'generate')) stale.push('prompt changed');
+  if (g.sourceTaggedAt && store.tags?.taggedAt && g.sourceTaggedAt !== store.tags.taggedAt) {
+    stale.push('made from older tags');
+  }
+  setCard('generate', { done: true, meta: meta.join(' · '), stale, bodyHtml: renderGenerated(g) + rawJson(res) });
+  setCost('generate', g);
+  setBtn('generate', 'Re-run generate (1–2 min)', true);
+}
+
+// approximate spend/latency across the stored chain; "—" where stamps are missing
+function renderChainStrip() {
+  const el = $('chain-strip');
+  if (!Object.values(store).some(Boolean)) {
+    el.hidden = true;
+    return;
+  }
+  const llm = [store.research, store.tags, store.generated?.generated].filter(Boolean);
+  const stamped = llm.filter((a) => a.usage);
+  let inTok = 0;
+  let outTok = 0;
+  let cost = 0;
+  let costKnown = stamped.length > 0;
+  for (const a of stamped) {
+    inTok += a.usage.inputTokens;
+    outTok += a.usage.outputTokens;
+    const c = estCost(a.usage);
+    if (c == null) costKnown = false;
+    else cost += c;
+  }
+  const wallParts = [store.scrape?.meta, store.research, store.tags, store.generated?.generated].filter(Boolean);
+  const walls = wallParts.map((a) => a.durationMs).filter((d) => d != null);
+  const wall = walls.length ? walls.reduce((n, d) => n + d, 0) : null;
+  const scrapes = store.scrape ? 1 : 0;
+  el.innerHTML = [
+    `<span class="chain-label">≈ stored chain</span>`,
+    `<span>LLM artifacts stamped: <b>${stamped.length}/${llm.length}</b></span>`,
+    `<span>tokens: <b>${stamped.length ? `${fmtTokens(inTok)} in / ${fmtTokens(outTok)} out` : '—'}</b></span>`,
+    `<span>LLM ≈ <b>${stamped.length && costKnown ? fmtUsd(cost) : '$—'}</b></span>`,
+    `<span>scrapes: <b>${scrapes}</b> ≈ <b>${scrapes && SCRAPE_COST != null ? fmtUsd(scrapes * SCRAPE_COST) : '$—'}</b></span>`,
+    `<span>wall: <b>${wall != null ? fmtDur(wall) : '—'}</b>${walls.length && walls.length < wallParts.length ? ' <span>(partial)</span>' : ''}</span>`,
+  ].join('');
+}
+
+function renderAll() {
+  renderScrapeCard();
+  renderParseCard();
+  renderResearchCard();
+  renderTagCard();
+  renderGenerateCard();
+  renderChainStrip();
+}
+
+// --- hydration: pure reads only, nothing persisted -------------------------------
 async function hydrate() {
   const input = inputBox.value.trim();
-  if (!input) return;
-  lastHydrated = input;
-
-  await loadActivePrompts();
-
-  // step 1: POST /parse reuses stored HTML — fast when already scraped
-  try {
-    const res = await api('POST', '/parse', { input });
-    $('out-1').innerHTML = renderListing(res.listing);
-    $('out-1').classList.remove('empty');
-    $('meta-1').textContent = `${res.listing.ref.marketplace}_${res.listing.ref.asin} · ${res.source}`;
-    markDone(1);
-  } catch { /* no stored listing yet — step 1 button stays */ }
-
-  // steps 2 & 3: pure reads, no LLM
-  try {
-    const res = await api('GET', `/tags?input=${encodeURIComponent(input)}`);
-    showTags(res);
-  } catch { /* not tagged yet */ }
-
-  try {
-    const res = await api('GET', `/generate?input=${encodeURIComponent(input)}`);
-    showGenerated(res, 'stored');
-  } catch { /* not generated yet */ }
+  const seq = ++hydrateSeq;
+  store = { scrape: null, parse: null, research: null, tags: null, generated: null };
+  if (!input) {
+    renderAll();
+    return;
+  }
+  const q = encodeURIComponent(input);
+  const get = (path) => api('GET', path).catch(() => null);
+  const [, scrape, parse, research, tags, generated] = await Promise.all([
+    loadActivePrompts(),
+    get(`/scrape?input=${q}`),
+    get(`/parse?input=${q}`),
+    get(`/research?input=${q}`),
+    get(`/tags?input=${q}`),
+    get(`/generate?input=${q}`),
+  ]);
+  if (seq !== hydrateSeq) return; // superseded by a newer input
+  store = { scrape, parse, research, tags, generated };
+  renderAll();
 }
 
+// --- actions: every POST is a button click; card re-hydrates after ---------------
+function bindAction(key, post) {
+  const btn = $('btn-' + key);
+  btn.addEventListener('click', () =>
+    runAction(btn, async () => {
+      try {
+        const input = requireInput();
+        $('card-' + key).classList.add('running');
+        $('meta-' + key).textContent = 'running…';
+        await post(input);
+        await hydrate();
+      } catch (e) {
+        $('card-' + key).classList.remove('running');
+        $('meta-' + key).textContent = '';
+        showError(key, e);
+      }
+    }));
+}
+
+bindAction('scrape', (input) => api('POST', '/scrape', { input }));
+bindAction('parse', (input) => api('POST', '/parse', { input }));
+bindAction('research', (input) => api('POST', '/research', { input }));
+bindAction('tag', (input) => api('POST', '/tags', { input }));
+bindAction('generate', (input) => api('POST', '/generate', { input }));
+
+// known-ASIN picker (stored scrapes) — optional nicety, fails silent
+async function loadKnownListings() {
+  try {
+    const res = await api('GET', '/listings');
+    $('known-listings').innerHTML = res.listings
+      .map((r) => `<option value="${esc(r.url)}">${esc(`${r.marketplace}_${r.asin}`)}</option>`)
+      .join('');
+  } catch { /* access key missing or store empty — picker is optional */ }
+}
+
+renderAll();
 if (inputBox.value.trim()) hydrate();
+loadKnownListings();
 </script>
 </body>
 </html>

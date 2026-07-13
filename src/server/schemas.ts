@@ -1,12 +1,21 @@
 import { z } from 'zod';
 import type { Listing } from '../domain/listing';
 import type { Identity, Tag, TagSet } from '../domain/research';
+import type { LlmUsage } from '../domain/usage';
 import type { Evaluation } from '../domain/evaluation';
 
 const marketplace = z.enum(['US', 'UK', 'DE', 'FR', 'ES', 'IT', 'IN', 'JP', 'CA', 'AU']);
 
 const image = z.object({ url: z.string(), alt: z.string().optional() });
 
+const llmUsageSchema = z.object({
+  model: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+}) satisfies z.ZodType<LlmUsage>;
+
+// provenance fields must be listed here or Zod strips them on reuse
+// (resolve-listing runs stored artifacts through these schemas)
 export const listingSchema = z.object({
   ref: z.object({ asin: z.string(), marketplace, url: z.string().url() }),
   title: z.string(),
@@ -16,6 +25,8 @@ export const listingSchema = z.object({
   aplusContent: z.string().default(''),
   heroImage: image.nullable(),
   secondaryImages: z.array(image),
+  parsedAt: z.string().optional(),
+  sourceFetchedAt: z.string().optional(),
 }) satisfies z.ZodType<Listing, z.ZodTypeDef, unknown>;
 
 export const identitySchema = z.object({
@@ -39,6 +50,11 @@ export const tagSchema = z.object({
 export const tagSetSchema = z.object({
   identity: identitySchema,
   tags: z.array(tagSchema),
+  promptVersion: z.string().optional(),
+  taggedAt: z.string().optional(),
+  sourceResearchedAt: z.string().optional(),
+  usage: llmUsageSchema.optional(),
+  durationMs: z.number().optional(),
 }) satisfies z.ZodType<TagSet>;
 
 const score = z.object({ value: z.number(), max: z.number(), notes: z.string().optional() });
@@ -76,10 +92,25 @@ export const scrapeBody = z.object({
 
 export const scrapeQuery = z.object({ include: z.enum(['html']).optional() });
 
+export const getScrapeQuery = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+  include: z.enum(['html']).optional(),
+  /** `view=html` returns the stored page as rendered text/html instead of JSON */
+  view: z.enum(['html']).optional(),
+});
+
 export const parseBody = z.object({
   input: z.string().min(1, 'input (url or ASIN) is required'),
   scraper: scraperKind.optional(),
   refetch: z.boolean().optional(),
+});
+
+export const getParseQuery = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
+});
+
+export const getResearchQuery = z.object({
+  input: z.string().min(1, 'input (url or ASIN) is required'),
 });
 export const researchBody = z.object({
   input: z.string().min(1, 'input (url or ASIN) is required'),

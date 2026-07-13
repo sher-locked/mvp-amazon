@@ -97,6 +97,16 @@ Expose the three LLM system prompts (research / tag / generate) so teammates can
 
 Notes: default versions are content hashes (`default#17d73bdb` research, `#c3360972` tag, `#8dd5c554` generate) — they change when the in-code default text changes. Concurrent saves are last-write-wins with every version retained. Out of v1: per-user prompts, draft (unsaved) runs, model/temperature toggles, history-browsing UI, per-ASIN "what the model sees" preview.
 
+## M6 — Five-step pipeline transparency ✅
+
+Expose all five pipeline stages (scrape / parse / research / tag / generate) as independent cards in the eval UI, backed by symmetric pure-read GETs and a chain-provenance trail (each artifact records which upstream artifact version made it; staleness is hinted, never auto-run). Includes the shared-module extraction of `public/` (vanilla JS stays; React explicitly deferred). Full handover plan: [plans/five-step-ui.md](plans/five-step-ui.md).
+
+- ✅ Phase A — `GET /scrape` (meta + `bytes`, `include=html`), `GET /parse`, `GET /research`; provenance stamps (`parsedAt`/`sourceFetchedAt`, `sourceParsedAt`, `taggedAt`/`sourceResearchedAt`, `sourceTaggedAt`); cost/duration stamps (`LlmResponse.usage` extracted by the OpenAI provider — generate sums its up-to-2 calls — plus `durationMs` on scrape meta + the three LLM artifacts). New fields declared optional in `listingSchema`/`tagSetSchema` so Zod reuse doesn't strip them.
+- ✅ Phase B — `public/shared.css` + `public/shared.js` (tokens, api/esc/fmt*, renderers, prompt-staleness helpers, button machinery); both pages consume; behavior unchanged. `shared.css`/`shared.js` added to the access guard's public paths (`<link>`/`<script>` can't send the key header).
+- ✅ Phase C — five-card run page: pure-GET hydration (fixes hydrate-writes-artifacts wart), per-card cost chips (estimate + "last run" actuals) with a chain-total strip after step 5 (rates = user-set placeholders in `PRICES`/`SCRAPE_COST`), parse-card SKU identity header (tuple from stored research, "identity pending" fallback), explicit-cost action labels (auto-resolving endpoints say what they'll run), chain + prompt stale hints, raw-JSON toggle per card; `GET /listings` stored-ASIN `<datalist>` picker (stretch, done).
+
+Notes: Live-verified with one full chain on `UK_B0BGSWJPNF` (13 Jul): re-scrape 6.2s/1.6MB → parse → research 56s (40k in / 2k out) → tag 76s (2k/5k, 67 tags) → generate 113s (4k/6k, 71/124/874/1890 chars, no corrective retry). Every stamp matched its upstream on disk (`sourceFetchedAt`=scrape `fetchedAt`, `sourceParsedAt`=`parsedAt`, `sourceResearchedAt`=`researchedAt`, `sourceTaggedAt`=`taggedAt`); chain strip summed 3/3 stamped · 46k in / 13k out · wall 4m 11s. Stale transitions seen live: re-scrape → parse card "made from an older scrape" → cleared by re-parse; tag card's "prompt changed" (stored custom-prompt artifact vs active default) cleared on re-tag. Upstream-newer hints for research/tags/generate can only fire between artifacts that both carry stamps — pre-M6 artifacts lack them by design (no false hints, verified: nulls surfaced, no hint). Dollar math verified by injecting a test rate client-side: per-card ≈$ actuals + chain LLM ≈$0.19 rendered, then removed. `usage.model` is the resolved snapshot id (`gpt-5.5-2026-04-23`), so `PRICES` keys must match it — noted in the shared.js comment. Rates left as placeholders: ask for real BrightData + per-model contract rates. Token usage under-counts research (web-search tool billing invisible) — everything stays labeled ≈. Post-ship addition: `GET /scrape&view=html` serves the stored page as rendered `text/html` (CSP `sandbox` so third-party page JS can't run on our origin / reach the access key; `<base>` injected for asset URLs) — scrape card links both "render page" and "raw HTML (JSON)"; verified rendering the stored Zoflora PDP visually.
+
 ## Phase 5 — Persistence, Auth, Billing ⬜
 
 Make runs durable and gated.
@@ -108,6 +118,8 @@ Make runs durable and gated.
 
 ## Backlog / open questions
 
+- **Handover 2 (after M6 settles): config-driven tag taxonomy** — types/scopes become versioned data (same override pattern as prompts) feeding the provider schema, a generated prompt suffix, and the matrix renderers; `TagSet` snapshots its taxonomy. Direction locked 2026-07-11 (see plans/five-step-ui.md "Parked"); spec deliberately written after teammates use the five-step view.
+- React migration trigger: first genuinely interactive tooling (inline tag editing, side-by-side comparisons, run history) — not before.
 - Sync vs async for slow composable steps (scrape/research/rufus) under real latency.
 - Caching scrapes/research per ASIN to save cost.
 - Marketplace coverage + localization of rubrics.

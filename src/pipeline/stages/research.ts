@@ -12,7 +12,9 @@ import type { PipelineContext } from '../context';
  */
 export async function research(listing: Listing, ctx: PipelineContext): Promise<SkuResearch> {
   const prompt = await resolvePrompt('research', ctx.prompts);
+  const started = Date.now();
   const reply = await ctx.llm.complete({ messages: identityMessages(prompt.system, listing), web: true });
+  const durationMs = Date.now() - started;
 
   const parsed = researchReplySchema.safeParse(parseJsonReply(reply.text));
   if (!parsed.success) {
@@ -25,6 +27,9 @@ export async function research(listing: Listing, ctx: PipelineContext): Promise<
     sources: reply.sources ?? [],
     researchedAt: new Date().toISOString(),
     promptVersion: prompt.version,
+    ...(listing.parsedAt ? { sourceParsedAt: listing.parsedAt } : {}),
+    ...(reply.usage ? { usage: reply.usage } : {}),
+    durationMs,
   };
 
   await ctx.artifacts.saveResearch(listing.ref, research);

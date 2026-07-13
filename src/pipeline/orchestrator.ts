@@ -61,7 +61,9 @@ export async function executeRun(runId: string, deps: OrchestratorDeps): Promise
   try {
     const ref = await runStage(run, repo, 'ingest', () => ingest(run.input));
     const scraped = await runStage(run, repo, 'scrape', () => scrape(ref, ctx));
-    const listing = await runStage(run, repo, 'parse', () => parse(ref, scraped.page, ctx));
+    const listing = await runStage(run, repo, 'parse', () =>
+      parse(ref, scraped.page, ctx, { fetchedAt: scraped.meta.fetchedAt }),
+    );
     const skuResearch = await runStage(run, repo, 'research', () => research(listing, ctx));
     const tags = await runStage(run, repo, 'tag', () => tag(listing, skuResearch, ctx));
     const content = await runStage(run, repo, 'evaluate-content', () =>

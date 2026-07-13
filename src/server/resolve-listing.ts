@@ -14,8 +14,8 @@ export async function resolveListing(ref: ListingRef, ctx: PipelineContext): Pro
   if (stored) return listingSchema.parse(stored);
 
   const raw = await ctx.artifacts.loadRaw(ref);
-  const page = raw
-    ? { url: raw.meta.url, status: raw.meta.status, html: raw.html }
-    : (await scrape(ref, ctx)).page;
-  return parse(ref, page, ctx);
+  const scraped = raw
+    ? { page: { url: raw.meta.url, status: raw.meta.status, html: raw.html }, meta: raw.meta }
+    : await scrape(ref, ctx);
+  return parse(ref, scraped.page, ctx, { fetchedAt: scraped.meta.fetchedAt });
 }

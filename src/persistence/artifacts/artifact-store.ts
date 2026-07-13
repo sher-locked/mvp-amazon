@@ -11,6 +11,7 @@ export interface RawArtifactMeta {
   fetchedAt: string;
   blocked: boolean;
   blockMarker?: string;
+  durationMs?: number;
 }
 
 export interface RawArtifact {
@@ -25,6 +26,8 @@ export interface RawArtifact {
 export interface ArtifactStore {
   saveRaw(ref: ListingRef, html: string, meta: RawArtifactMeta): Promise<void>;
   loadRaw(ref: ListingRef): Promise<RawArtifact | null>;
+  /** ids (`<MARKET>_<ASIN>`) of every listing with a stored scrape — cheap readdir, no HTML reads */
+  listScraped(): Promise<string[]>;
   saveListing(ref: ListingRef, listing: Listing): Promise<void>;
   loadListing(ref: ListingRef): Promise<Listing | null>;
   saveResearch(ref: ListingRef, research: SkuResearch): Promise<void>;
@@ -41,6 +44,9 @@ export class NoopArtifactStore implements ArtifactStore {
   async saveRaw(): Promise<void> {}
   async loadRaw(): Promise<RawArtifact | null> {
     return null;
+  }
+  async listScraped(): Promise<string[]> {
+    return [];
   }
   async saveListing(): Promise<void> {}
   async loadListing(): Promise<Listing | null> {

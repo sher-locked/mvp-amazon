@@ -38,10 +38,12 @@ export async function tag(
   ctx: PipelineContext,
 ): Promise<TagSet> {
   const prompt = await resolvePrompt('tag', ctx.prompts);
+  const started = Date.now();
   const reply = await ctx.llm.complete({
     messages: tagsMessages(prompt.system, listing, research),
     schema: TAG_SET_JSON_SCHEMA,
   });
+  const durationMs = Date.now() - started;
 
   const parsed = tagsReplySchema.safeParse(parseJsonReply(reply.text));
   if (!parsed.success) {
@@ -51,6 +53,10 @@ export async function tag(
   const tagSet = toTagSet(parsed.data);
   tagSet.tags = dedupeAcrossScopes(tagSet.tags);
   tagSet.promptVersion = prompt.version;
+  tagSet.taggedAt = new Date().toISOString();
+  tagSet.sourceResearchedAt = research.researchedAt;
+  if (reply.usage) tagSet.usage = reply.usage;
+  tagSet.durationMs = durationMs;
 
   await ctx.artifacts.saveTags(listing.ref, tagSet);
   ctx.logger.info(

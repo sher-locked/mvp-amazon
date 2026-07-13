@@ -17,6 +17,8 @@ interface OutputItem {
 
 interface ResponsesPayload {
   output?: OutputItem[];
+  model?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
   error?: { message?: string } | null;
 }
 
@@ -43,8 +45,9 @@ export class OpenAiClient implements LlmClient {
       req.tier === 'fast'
         ? (this.config.OPENAI_MODEL_FAST ?? this.config.OPENAI_MODEL)
         : this.config.OPENAI_MODEL;
+    const model = req.model ?? fallback;
     const body: Record<string, unknown> = {
-      model: req.model ?? fallback,
+      model,
       input: toInput(req.messages),
     };
     if (req.temperature !== undefined) body.temperature = req.temperature;
@@ -100,6 +103,21 @@ export class OpenAiClient implements LlmClient {
       ),
     ];
 
-    return { text, ...(sources.length ? { sources } : {}), raw: payload };
+    const usage =
+      typeof payload.usage?.input_tokens === 'number' &&
+      typeof payload.usage.output_tokens === 'number'
+        ? {
+            model: payload.model ?? model,
+            inputTokens: payload.usage.input_tokens,
+            outputTokens: payload.usage.output_tokens,
+          }
+        : undefined;
+
+    return {
+      text,
+      ...(sources.length ? { sources } : {}),
+      ...(usage ? { usage } : {}),
+      raw: payload,
+    };
   }
 }

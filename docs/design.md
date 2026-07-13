@@ -38,7 +38,7 @@ Both paths call the same stage functions — no duplicated logic.
 | `auth/`            | Company-email OTP (stub).                                             |
 | `billing/`         | Quota / unlock paywall (stub).                                        |
 | `server/`          | Fastify app, error handler, access guard, route registration, request schemas. |
-| `public/`          | Static eval UI: self-contained dark-mode pages (no build step) served via `@fastify/static` — `index.html` (run steps) + `prompts.html` (prompt editors). |
+| `public/`          | Static eval UI (no build step) via `@fastify/static`: `index.html` (five step cards) + `prompts.html` (prompt editors) + `shared.css`/`shared.js` (design tokens, api/esc, renderers, cost constants — ES module both pages import). |
 | `container.ts`     | Composition root; wires everything once at startup.                  |
 | `spikes/`          | Throwaway de-risking experiments, promoted into `src/` once proven.   |
 
@@ -72,11 +72,14 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 
 | Method | Path                    | In → Out                                              |
 | ------ | ----------------------- | ---------------------------------------------------- |
-| POST   | `/scrape`               | `{ input, scraper?, country? }` → `{ ref, meta, blocked }` (`?include=html` adds the raw body) |
+| POST   | `/scrape`               | `{ input, scraper?, country? }` → `{ ref, meta, blocked }` (`?include=html` adds the raw body; `meta` includes `bytes` + `durationMs`) |
+| GET    | `/scrape`               | `?input=url\|asin` → `{ ref, meta }` (pure read of the latest stored scrape, no fetch; `meta` includes `bytes`; 404 if never scraped; `&include=html` adds the raw body; `&view=html` returns the stored page as rendered `text/html` — CSP-sandboxed, scripts blocked, `<base>` injected so assets resolve) |
 | POST   | `/parse`                | `{ input, scraper?, refetch? }` → `{ listing, source }` (reuses latest stored HTML unless `refetch`) |
-| POST   | `/research`             | `{ input }` → `{ ref, identity, notes, sources }` (web-enabled LLM; reuses stored listing) |
-| POST   | `/tags`                 | `{ input, refresh? }` → `{ ref, identity, tags, source }` (reuses stored research unless `refresh`; `?include=matrix` adds a markdown view) |
-| GET    | `/tags`                 | `?input=url\|asin` → `{ ref, identity, tags }` (pure read of the latest stored tag set, no LLM; 404 if never tagged; `&include=matrix` adds the markdown view) |
+| GET    | `/parse`                | `?input=url\|asin` → `{ ref, listing }` (pure read of the latest stored parse, never scrapes or persists; 404 if never parsed) |
+| POST   | `/research`             | `{ input }` → `{ ref, identity, notes, sources, researchedAt, promptVersion, sourceParsedAt, usage, durationMs }` (web-enabled LLM; reuses stored listing) |
+| GET    | `/research`             | `?input=url\|asin` → same shape as POST (pure read of the latest stored research, no LLM; 404 if never researched) |
+| POST   | `/tags`                 | `{ input, refresh? }` → `{ ref, identity, tags, source, taggedAt, sourceResearchedAt, usage, durationMs }` (reuses stored research unless `refresh`; `?include=matrix` adds a markdown view) |
+| GET    | `/tags`                 | `?input=url\|asin` → `{ ref, identity, tags, taggedAt, sourceResearchedAt, … }` (pure read of the latest stored tag set, no LLM; 404 if never tagged; `&include=matrix` adds the markdown view) |
 | POST   | `/evaluate/content`     | `{ listing, tags }` → `{ content }`                   |
 | POST   | `/evaluate/rufus`       | `{ listing, tags }` → `{ rufus }`                     |
 | POST   | `/evaluate/llm-search`  | `{ listing, tags }` → `{ llmSearch }`                 |
@@ -85,6 +88,7 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 | GET    | `/prompts`              | → `{ prompts: [{ id, title, constraints, defaultText, override, active, … }] }` (the three editable slots) |
 | PUT    | `/prompts/:id`          | `{ text, note? }` → `{ id, override, active }` (save a new global override version) |
 | DELETE | `/prompts/:id`          | → `{ id, active }` (revert to the code default; history kept) |
+| GET    | `/listings`             | → `{ listings: ListingRef[] }` (every listing with a stored scrape — readdir only; feeds the UI's known-ASIN picker) |
 | POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
 | GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
 | POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
@@ -92,7 +96,11 @@ Composable steps are synchronous; the orchestrated pipeline is async.
 | GET    | `/health`               | → `{ status }`                                        |
 | GET    | `/`                     | static eval UI (`public/index.html`)                  |
 
-When `ACCESS_KEY` is set, every route except `/`, `/index.html`, `/favicon.ico`, and `/health` requires `x-access-key` (or `?key=`) to match, else 401 (`server/access-guard.ts`). Unset = guard disabled (local dev). The UI keeps the key in localStorage and sends it on every call.
+When `ACCESS_KEY` is set, every route except the UI pages + assets (`/`, `/index.html`, `/prompts.html`, `/shared.css`, `/shared.js`, `/favicon.ico`) and `/health` requires `x-access-key` (or `?key=`) to match, else 401 (`server/access-guard.ts`). Unset = guard disabled (local dev). The UI keeps the key in localStorage and sends it on every call.
+
+### Eval UI (five step cards)
+
+`index.html` shows the five observable stages — scrape / parse / research / tag / generate — as independent cards. Each card hydrates from its pure GET on load and input change (never persists), and re-hydrates the whole chain after any action POST. Per card: a header cost chip (static estimate from `STEP_ESTIMATES` in `shared.js`, plus "last run" actuals from the artifact's `usage`/`durationMs` stamps), a meta line (ref · timestamps · prompt version), chain + prompt stale hints (hint only, never auto-run), a collapsed raw-JSON block, and one explicit action button whose label states the cost (auto-resolving endpoints say what they'll run). The parse card opens with the SKU identity tuple — a view join over stored research (identity is research output, never parsed), falling back to "identity pending research". A chain-total strip after card 5 sums tokens / ≈ dollars / scrape count / wall time across the stored chain, "—" where stamps are missing. Dollar math uses the `PRICES` / `SCRAPE_COST` placeholder constants in `shared.js` (per-1M-token rates keyed by `usage.model`, unset by default → "$—") — set real contract rates there. A `<datalist>` fed by `GET /listings` suggests already-scraped ASINs.
 
 ## Data model (current, in-memory)
 
@@ -102,7 +110,7 @@ When `ACCESS_KEY` is set, every route except `/`, `/index.html`, `/favicon.ico`,
 
 `ArtifactStore` (see `persistence/artifacts/`) keeps every scrape/parse, newest pointed to by `latest.json`:
 
-- `tmp/scrape/<MARKET>_<ASIN>/<ISOts>__<scraper>.html` + `latest.json` with provenance `{ scraper, status, country, url, fetchedAt, blocked, file }`.
+- `tmp/scrape/<MARKET>_<ASIN>/<ISOts>__<scraper>.html` + `latest.json` with provenance `{ scraper, status, country, url, fetchedAt, blocked, durationMs, file }`.
 - `tmp/parse/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer.
 - `tmp/research/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`SkuResearch`).
 - `tmp/tags/<MARKET>_<ASIN>/<ISOts>.json` + `latest.json` pointer (`TagSet`).
@@ -110,6 +118,8 @@ When `ACCESS_KEY` is set, every route except `/`, `/index.html`, `/favicon.ico`,
 - `tmp/prompts/<slot>/<ISOts>.json` + `latest.json` pointer (global prompt overrides; revert removes only the pointer).
 
 `/parse` loads the latest raw HTML instead of re-scraping (BrightData requests cost money); `refetch: true` forces a fresh scrape. Likewise `/tags` loads the latest stored research instead of re-running the web-enabled LLM call; `refresh: true` forces new research.
+
+**Chain provenance (M6):** each artifact stamps the identifying timestamp of the direct input it consumed, so the UI can hint when a downstream artifact was made from a since-replaced upstream — hints only, re-runs stay explicit. `Listing.parsedAt` + `sourceFetchedAt` (the scrape's `fetchedAt`), `SkuResearch.sourceParsedAt`, `TagSet.taggedAt` + `sourceResearchedAt`, `GeneratedListing.sourceTaggedAt`. Cost observability rides along: `LlmResponse.usage` (`{ model, inputTokens, outputTokens }`, extracted by the OpenAI provider; generate sums its up-to-2 calls) and `durationMs` are stamped on the three LLM artifacts and scrape meta. Token usage misses web-search tool billing, so all downstream cost math is labeled approximate. All provenance/cost fields are optional — artifacts stored before M6 simply lack them, and every consumer must tolerate that. They are also declared (optional) in `server/schemas.ts` `listingSchema`/`tagSetSchema`: Zod strips unknown keys, so an undeclared field would silently vanish when `resolve-listing` re-validates a stored artifact.
 
 ## DB tables (placeholder — not yet implemented)
 

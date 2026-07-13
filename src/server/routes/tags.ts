@@ -35,6 +35,10 @@ export function registerTagsRoutes(app: FastifyInstance, c: Container): void {
       source: stored ? 'stored' : 'researched',
       promptVersion: tagSet.promptVersion ?? null,
       researchPromptVersion: skuResearch.promptVersion ?? null,
+      taggedAt: tagSet.taggedAt ?? null,
+      sourceResearchedAt: tagSet.sourceResearchedAt ?? null,
+      usage: tagSet.usage ?? null,
+      durationMs: tagSet.durationMs ?? null,
       ...(include === 'matrix' ? { matrix: renderTagMatrix(tagSet) } : {}),
     });
   });
@@ -58,6 +62,10 @@ export function registerTagsRoutes(app: FastifyInstance, c: Container): void {
       tags: tagSet.tags,
       promptVersion: tagSet.promptVersion ?? null,
       researchPromptVersion: storedResearch?.promptVersion ?? null,
+      taggedAt: tagSet.taggedAt ?? null,
+      sourceResearchedAt: tagSet.sourceResearchedAt ?? null,
+      usage: tagSet.usage ?? null,
+      durationMs: tagSet.durationMs ?? null,
       ...(include === 'matrix' ? { matrix: renderTagMatrix(tagSet) } : {}),
     });
   });

@@ -1,3 +1,5 @@
+import type { LlmUsage } from './usage';
+
 /** One generated listing field; chars counted in code, never trusted from the LLM. */
 export interface GeneratedField {
   text: string;
@@ -21,4 +23,9 @@ export interface GeneratedListing {
   generatedAt: string;
   /** prompt that produced it: `default#<hash8>` | `custom#<ISOts>` (absent on old artifacts) */
   promptVersion?: string;
+  /** taggedAt of the tag set this generation consumed (absent on old artifacts) */
+  sourceTaggedAt?: string;
+  /** summed across the base call + the corrective retry when it fires */
+  usage?: LlmUsage;
+  durationMs?: number;
 }
