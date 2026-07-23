@@ -70,31 +70,31 @@ The three LLM system prompts (`research`, `tag`, `generate`) are editable by tea
 
 Composable steps are synchronous; the orchestrated pipeline is async.
 
-| Method | Path                    | In → Out                                              |
-| ------ | ----------------------- | ---------------------------------------------------- |
-| POST   | `/scrape`               | `{ input, scraper?, country? }` → `{ ref, meta, blocked }` (`?include=html` adds the raw body; `meta` includes `bytes` + `durationMs`) |
-| GET    | `/scrape`               | `?input=url\|asin` → `{ ref, meta }` (pure read of the latest stored scrape, no fetch; `meta` includes `bytes`; 404 if never scraped; `&include=html` adds the raw body; `&view=html` returns the stored page as rendered `text/html` — CSP-sandboxed, scripts blocked, `<base>` injected so assets resolve) |
-| POST   | `/parse`                | `{ input, scraper?, refetch? }` → `{ listing, source }` (reuses latest stored HTML unless `refetch`) |
-| GET    | `/parse`                | `?input=url\|asin` → `{ ref, listing }` (pure read of the latest stored parse, never scrapes or persists; 404 if never parsed) |
-| POST   | `/research`             | `{ input }` → `{ ref, identity, notes, sources, researchedAt, promptVersion, sourceParsedAt, usage, durationMs }` (web-enabled LLM; reuses stored listing) |
-| GET    | `/research`             | `?input=url\|asin` → same shape as POST (pure read of the latest stored research, no LLM; 404 if never researched) |
-| POST   | `/tags`                 | `{ input, refresh? }` → `{ ref, identity, tags, source, taggedAt, sourceResearchedAt, usage, durationMs }` (reuses stored research unless `refresh`; `?include=matrix` adds a markdown view) |
-| GET    | `/tags`                 | `?input=url\|asin` → `{ ref, identity, tags, taggedAt, sourceResearchedAt, … }` (pure read of the latest stored tag set, no LLM; 404 if never tagged; `&include=matrix` adds the markdown view) |
-| POST   | `/evaluate/content`     | `{ listing, tags }` → `{ content }`                   |
-| POST   | `/evaluate/rufus`       | `{ listing, tags }` → `{ rufus }`                     |
-| POST   | `/evaluate/llm-search`  | `{ listing, tags }` → `{ llmSearch }`                 |
-| POST   | `/generate`             | `{ input, refresh? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; always regenerates the full four-field document in one call) |
-| GET    | `/generate`             | `?input=url\|asin` → `{ ref, generated }` (pure read of the latest stored generation, no LLM; 404 if never generated) |
-| GET    | `/prompts`              | → `{ prompts: [{ id, title, constraints, defaultText, override, active, … }] }` (the three editable slots) |
-| PUT    | `/prompts/:id`          | `{ text, note? }` → `{ id, override, active }` (save a new global override version) |
-| DELETE | `/prompts/:id`          | → `{ id, active }` (revert to the code default; history kept) |
-| GET    | `/listings`             | → `{ listings: ListingRef[] }` (every listing with a stored scrape — readdir only; feeds the UI's known-ASIN picker) |
-| POST   | `/runs`                 | `{ input, scraper? }` → `{ runId, status }` (async pipeline) |
-| GET    | `/runs/:id`             | → `Run` (status + stages + result)                   |
-| POST   | `/auth/otp`             | `{ email }` → `{ sent }` (stub)                       |
-| POST   | `/auth/verify`          | `{ email, code }` → `{ user }` (stub)                 |
-| GET    | `/health`               | → `{ status }`                                        |
-| GET    | `/`                     | static eval UI (`public/index.html`)                  |
+| Method | Path                   | In → Out                                                                                                                                                                                                                                                                                                     |
+| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST   | `/scrape`              | `{ input, scraper?, country? }` → `{ ref, meta, blocked }` (`?include=html` adds the raw body; `meta` includes `bytes` + `durationMs`)                                                                                                                                                                       |
+| GET    | `/scrape`              | `?input=url\|asin` → `{ ref, meta }` (pure read of the latest stored scrape, no fetch; `meta` includes `bytes`; 404 if never scraped; `&include=html` adds the raw body; `&view=html` returns the stored page as rendered `text/html` — CSP-sandboxed, scripts blocked, `<base>` injected so assets resolve) |
+| POST   | `/parse`               | `{ input, scraper?, refetch? }` → `{ listing, source }` (reuses latest stored HTML unless `refetch`)                                                                                                                                                                                                         |
+| GET    | `/parse`               | `?input=url\|asin` → `{ ref, listing }` (pure read of the latest stored parse, never scrapes or persists; 404 if never parsed)                                                                                                                                                                               |
+| POST   | `/research`            | `{ input }` → `{ ref, identity, notes, sources, researchedAt, promptVersion, sourceParsedAt, usage, durationMs }` (web-enabled LLM; reuses stored listing)                                                                                                                                                   |
+| GET    | `/research`            | `?input=url\|asin` → same shape as POST (pure read of the latest stored research, no LLM; 404 if never researched)                                                                                                                                                                                           |
+| POST   | `/tags`                | `{ input, refresh? }` → `{ ref, identity, tags, source, taggedAt, sourceResearchedAt, usage, durationMs }` (reuses stored research unless `refresh`; `?include=matrix` adds a markdown view)                                                                                                                 |
+| GET    | `/tags`                | `?input=url\|asin` → `{ ref, identity, tags, taggedAt, sourceResearchedAt, … }` (pure read of the latest stored tag set, no LLM; 404 if never tagged; `&include=matrix` adds the markdown view)                                                                                                              |
+| POST   | `/evaluate/content`    | `{ listing, tags }` → `{ content }`                                                                                                                                                                                                                                                                          |
+| POST   | `/evaluate/rufus`      | `{ listing, tags }` → `{ rufus }`                                                                                                                                                                                                                                                                            |
+| POST   | `/evaluate/llm-search` | `{ listing, tags }` → `{ llmSearch }`                                                                                                                                                                                                                                                                        |
+| POST   | `/generate`            | `{ input, refresh? }` → `{ ref, generated, source }` (reuses stored tags; `refresh` re-runs research→tag; always regenerates the full four-field document in one call)                                                                                                                                       |
+| GET    | `/generate`            | `?input=url\|asin` → `{ ref, generated }` (pure read of the latest stored generation, no LLM; 404 if never generated)                                                                                                                                                                                        |
+| GET    | `/prompts`             | → `{ prompts: [{ id, title, constraints, defaultText, override, active, … }] }` (the three editable slots)                                                                                                                                                                                                   |
+| PUT    | `/prompts/:id`         | `{ text, note? }` → `{ id, override, active }` (save a new global override version)                                                                                                                                                                                                                          |
+| DELETE | `/prompts/:id`         | → `{ id, active }` (revert to the code default; history kept)                                                                                                                                                                                                                                                |
+| GET    | `/listings`            | → `{ listings: ListingRef[] }` (every listing with a stored scrape — readdir only; feeds the UI's known-ASIN picker)                                                                                                                                                                                         |
+| POST   | `/runs`                | `{ input, scraper? }` → `{ runId, status }` (async pipeline)                                                                                                                                                                                                                                                 |
+| GET    | `/runs/:id`            | → `Run` (status + stages + result)                                                                                                                                                                                                                                                                           |
+| POST   | `/auth/otp`            | `{ email }` → `{ sent }` (stub)                                                                                                                                                                                                                                                                              |
+| POST   | `/auth/verify`         | `{ email, code }` → `{ user }` (stub)                                                                                                                                                                                                                                                                        |
+| GET    | `/health`              | → `{ status }`                                                                                                                                                                                                                                                                                               |
+| GET    | `/`                    | static eval UI (`public/index.html`)                                                                                                                                                                                                                                                                         |
 
 When `ACCESS_KEY` is set, every route except the UI pages + assets (`/`, `/index.html`, `/prompts.html`, `/shared.css`, `/shared.js`, `/favicon.ico`) and `/health` requires `x-access-key` (or `?key=`) to match, else 401 (`server/access-guard.ts`). Unset = guard disabled (local dev). The UI keeps the key in localStorage and sends it on every call.
 
@@ -121,15 +121,11 @@ When `ACCESS_KEY` is set, every route except the UI pages + assets (`/`, `/index
 
 **Chain provenance (M6):** each artifact stamps the identifying timestamp of the direct input it consumed, so the UI can hint when a downstream artifact was made from a since-replaced upstream — hints only, re-runs stay explicit. `Listing.parsedAt` + `sourceFetchedAt` (the scrape's `fetchedAt`), `SkuResearch.sourceParsedAt`, `TagSet.taggedAt` + `sourceResearchedAt`, `GeneratedListing.sourceTaggedAt`. Cost observability rides along: `LlmResponse.usage` (`{ model, inputTokens, outputTokens }`, extracted by the OpenAI provider; generate sums its up-to-2 calls) and `durationMs` are stamped on the three LLM artifacts and scrape meta. Token usage misses web-search tool billing, so all downstream cost math is labeled approximate. All provenance/cost fields are optional — artifacts stored before M6 simply lack them, and every consumer must tolerate that. They are also declared (optional) in `server/schemas.ts` `listingSchema`/`tagSetSchema`: Zod strips unknown keys, so an undeclared field would silently vanish when `resolve-listing` re-validates a stored artifact.
 
-## DB tables (placeholder — not yet implemented)
+## Target domain before database design
 
-When persistence lands (Postgres + a TS query layer), expected tables:
+The earlier placeholder tables were intentionally removed because they preserved the filesystem model's per-user Run/result document while omitting tenancy, canonical catalog identity, claims, channel mappings, and approval lifecycles. The agreed plain-English **v1** target model is in [domain-model.md](domain-model.md), with canonical terms in [glossary.md](glossary.md) (Account tenancy; Brand → Product → SKU → Listing; Claims; Analyze Run = one Listing).
 
-- `users` — `id`, `email`, `company_domain`, `created_at`.
-- `runs` — `id`, `user_id`, `input`, `asin`, `marketplace`, `status`, `error`, `created_at`, `updated_at`.
-- `run_stages` — `id`, `run_id`, `name`, `status`, `started_at`, `finished_at`, `error`.
-- `run_results` — `run_id`, `listing` (jsonb), `research` (jsonb), `tags` (jsonb), `evaluation` (jsonb), `generated` (jsonb).
-- `usage` / `billing` — `user_id`, `runs_used`, `quota`, `plan`, `period`.
+Relational tables, keys, and indexes remain deliberately unspecified until that v1 alignment is treated as accepted.
 
 ## Providers & config
 

@@ -111,10 +111,13 @@ Notes: Live-verified with one full chain on `UK_B0BGSWJPNF` (13 Jul): re-scrape 
 
 Make runs durable and gated.
 
+- ✅ Plain-English target domain model + glossary; separates Organization tenancy, Product/Variant/SKU/Listing identity, Claims/Evidence, and execution history (`docs/domain-model.md`, `docs/glossary.md`).
 - ⬜ Postgres + query layer; implement `RunRepository`; create tables (see Design).
 - ⬜ Company-email OTP login (renderable OTP email) + sessions.
 - ⬜ Quota + payments to unlock beyond N runs.
 - ⬜ Durable job queue (retries, concurrency) replacing in-process queue.
+
+Notes: Direction agreed before schema work: Organization is the workspace boundary; catalog identity is Product → Variant → SKU → Listing → Offer with Category orthogonal; durable knowledge is Claims + Evidence with Tags as classifications; only approved knowledge/content versions are permanent product history. Run summaries, usage/accounting, identity corrections, security audit, and evidence supporting retained records remain durable exceptions. Detailed unpromoted artifacts should start with a reversible 30–90 day retention window rather than immediate deletion.
 
 ## Backlog / open questions
 

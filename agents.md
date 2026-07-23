@@ -1,4 +1,4 @@
-# claude.md — Working Context
+# AGENTS.md — Working Context
 
 Agent-facing guide. Read before changing code. Keep it true; update it when architecture shifts. For deeper structure see `docs/design.md`; for scope/progress see `docs/plan.md`.
 
@@ -10,7 +10,7 @@ One job: take an Amazon listing (URL/ASIN) and evaluate its content for **discov
 
 The unit of work is an **evaluation run** over one **listing**.
 
-This is the current runtime model. The pre-database target domain and canonical vocabulary are in `docs/domain-model.md` and `docs/glossary.md`; table design waits on that v1 alignment. Target direction: **Account** tenancy (not Organization); Brand → Product → SKU (identity attributes) → Listing → Listing Snapshot; **Claims** (optional buckets, sensitive flag) on Product/SKU; Analyze Run = one Listing with research/classify reuse by Product/SKU; weighted lifetime credits + Usage ledger; approved content as placeholder.
+The pre-database target domain is in `docs/domain-model.md` / `docs/glossary.md` (Account tenancy; Brand → Product → SKU → Listing; Claims not Tags; Run = one Listing). Current runtime shapes below still power the filesystem MVP:
 
 - `Listing` — `{ ref, title, description, bullets, aplusContent, heroImage, secondaryImages[] }`
 - `Identity` — the SKU tuple `{brand} × {category} × {variantAttributes} × {size}`; `displayName` derived, never parsed
@@ -64,6 +64,6 @@ A static dark-mode eval UI (`public/index.html`, served by `@fastify/static`) sh
 
 1. Scrape Amazon PDP (Playwright feel-out → BrightData Web Unlocker).
 2. Probe Rufus (BrightData Browser API if Playwright fails).
-3. Probe ChatGPT / Claude / Perplexity via headless web.
+3. Probe ChatGPT / Codex / Perplexity via headless web.
 
 Keep these as runnable, isolated spikes in `spikes/` before hardening into clean modules.
